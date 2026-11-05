@@ -1,0 +1,48 @@
+# --- Bí mật (KHÔNG commit) ---
+# mật khẩu Redis dev, do scripts/redis_dev.sh tạo
+.redis.env
+# tài khoản admin web, do scripts/web.sh tunnel tạo
+web/.auth
+# tài khoản từng công ty, do scripts/web.sh publish tạo
+web/companies.auth
+*.pem
+*.key
+
+# --- Dữ liệu lớn: giữ trên server, không đưa vào git ---
+outputs/*
+!outputs/.gitkeep
+videos/*
+!videos/README.md
+models/*
+!models/README.md
+*.engine
+*.onnx
+*.etlt
+*.dlc
+
+# --- File build của app C (make tạo lại) ---
+*.o
+apps/task13_metadata/task13-meta-app
+apps/w1_multistream/w1-app
+apps/w1_multistream/w1-annotate
+
+# --- Trạng thái lúc chạy của dashboard master ---
+configs/.master/
+
+# --- Bản đóng gói / lưu trữ (git history thay cho archive/) ---
+handoff/*.zip
+handoff/*/sample_data/outputs/
+archive/
+
+# --- Python / editor ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.swp
+*~
+.DS_Store
+.vscode/
+.idea/
+.s3.env
+monitor/.run/

@@ -1,0 +1,33 @@
+# nvinfer config cho Task 1.3 - model mẫu ResNet18 TrafficCamNet (4 class: car, bicycle, person, road_sign)
+# batch-size ở đây bị app override = số nguồn; engine b1/b4 có sẵn, batch khác sẽ tự build lại (~1-2 phút lần đầu).
+[property]
+gpu-id=0
+net-scale-factor=0.00392156862745098
+tlt-model-key=tlt_encode
+tlt-encoded-model=/opt/nvidia/deepstream/deepstream/samples/models/Primary_Detector/resnet18_trafficcamnet.etlt
+model-engine-file=/opt/nvidia/deepstream/deepstream/samples/models/Primary_Detector/resnet18_trafficcamnet.etlt_b1_gpu0_int8.engine
+labelfile-path=/opt/nvidia/deepstream/deepstream/samples/models/Primary_Detector/labels.txt
+int8-calib-file=/opt/nvidia/deepstream/deepstream/samples/models/Primary_Detector/cal_trt.bin
+batch-size=1
+process-mode=1
+model-color-format=0
+network-mode=1
+num-detected-classes=4
+interval=0
+gie-unique-id=1
+uff-input-order=0
+uff-input-blob-name=input_1
+output-blob-names=output_cov/Sigmoid;output_bbox/BiasAdd
+force-implicit-batch-dim=1
+cluster-mode=2
+infer-dims=3;544;960
+
+[class-attrs-all]
+topk=20
+nms-iou-threshold=0.5
+pre-cluster-threshold=0.2
+
+[class-attrs-0]
+topk=20
+nms-iou-threshold=0.5
+pre-cluster-threshold=0.4

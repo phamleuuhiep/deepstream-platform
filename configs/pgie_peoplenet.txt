@@ -1,0 +1,37 @@
+# PGIE: NVIDIA TAO PeopleNet v2.6.3 (DetectNet_v2 ResNet34, 3 class: person=0, bag=1, face=2), ONNX, FP16.
+# (File calib INT8 đi kèm bản ONNX không khớp tên layer -> TensorRT báo "Calibration failure", nên dùng FP16.)
+# Train cho camera giám sát trong nhà: bắt người ngồi / bị che tốt hơn TrafficCamNet (model xe cộ, ít ảnh người ngồi).
+# Dùng để so sánh ở Task 2.2: ./scripts/w2_bc_test.sh model-nguoi. Chạy app: -c /workspace/configs/pgie_peoplenet.txt -p 0
+# Tải model: ./scripts/prepare_models.sh (models/peoplenet/)
+[property]
+gpu-id=0
+onnx-file=/workspace/models/peoplenet/resnet34_peoplenet.onnx
+labelfile-path=/workspace/models/peoplenet/labels.txt
+# App ghi đè batch = số camera (đổi _b1_ trong tên engine theo số camera)
+model-engine-file=/workspace/models/peoplenet/resnet34_peoplenet.onnx_b1_gpu0_fp16.engine
+batch-size=1
+network-mode=2
+num-detected-classes=3
+network-type=0
+process-mode=1
+gie-unique-id=1
+interval=0
+# Theo nvinfer_config.txt của NVIDIA: RGB / 255, kéo thẳng về 960x544
+net-scale-factor=0.00392156862745098
+offsets=0.0;0.0;0.0
+model-color-format=0
+maintain-aspect-ratio=0
+infer-dims=3;544;960
+output-blob-names=output_cov/Sigmoid:0;output_bbox/BiasAdd:0
+cluster-mode=2
+
+[class-attrs-all]
+pre-cluster-threshold=0.4
+nms-iou-threshold=0.5
+topk=50
+
+# person
+[class-attrs-0]
+pre-cluster-threshold=0.3
+nms-iou-threshold=0.5
+topk=50

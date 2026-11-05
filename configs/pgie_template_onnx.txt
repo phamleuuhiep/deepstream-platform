@@ -1,0 +1,43 @@
+# TEMPLATE PGIE cho model detect ONNX của team AI. Chưa chạy được khi chưa điền model.
+# Copy thành configs/pgie_<tên_model>.txt, sửa các dòng có <...>, rồi:
+#   ./scripts/run_w1.sh 4 -c /workspace/configs/pgie_<tên_model>.txt -p <class_người>
+# Đường dẫn là đường dẫn TRONG container (/workspace = thư mục repo trên host).
+[property]
+gpu-id=0
+
+# --- Model ---
+onnx-file=/workspace/models/<tên_model>.onnx
+# Lần đầu nvinfer tự build engine (vài phút) và lưu cạnh file onnx với tên dạng
+# <tên_model>.onnx_b<batch>_gpu0_<fp16|int8>.engine. Đổi onnx thì xoá engine cũ.
+model-engine-file=/workspace/models/<tên_model>.onnx_b4_gpu0_fp16.engine
+labelfile-path=/workspace/models/<tên_model>_labels.txt
+# Bị app ghi đè bằng số camera; ONNX nên export dynamic batch (hoặc batch cố định = số camera)
+batch-size=4
+# 0=FP32, 1=INT8 (cần int8-calib-file), 2=FP16
+network-mode=2
+
+# --- Tiền xử lý: phải khớp lúc train ---
+# pixel_input = net-scale-factor * (pixel - offsets). Ví dụ chuẩn hoá 0..1: 1/255
+net-scale-factor=0.0039215697906911373
+offsets=0;0;0
+# 0=RGB, 1=BGR, 2=GRAY
+model-color-format=0
+# 1 = giữ tỉ lệ khung (letterbox), thường dùng cho YOLO
+maintain-aspect-ratio=1
+symmetric-padding=1
+
+# --- Hậu xử lý ---
+num-detected-classes=<số class>
+gie-unique-id=1
+process-mode=1
+# Output chuẩn DetectNet/SSD/FRCNN thì nvinfer tự parse.
+# Output kiểu YOLO cần hàm parse riêng (.so). Repo cộng đồng hay dùng: DeepStream-Yolo (marcoslucianops).
+# parse-bbox-func-name=NvDsInferParseYolo
+# custom-lib-path=/workspace/models/libnvdsinfer_custom_impl_Yolo.so
+# 2 = NMS (cho model chưa NMS sẵn), 4 = không cluster (model đã NMS trong graph)
+cluster-mode=2
+
+[class-attrs-all]
+pre-cluster-threshold=0.25
+nms-iou-threshold=0.45
+topk=300

@@ -1,0 +1,38 @@
+# ============================================================================================
+# Tầng 3 / 4 - SGIE2: embedding khuôn mặt (ArcFace) để nhận diện người đã đăng ký
+# ============================================================================================
+# Model: InsightFace buffalo_s / w600k_mbf.onnx (MobileFaceNet, train WebFace600K), vào 112x112, ra vector
+# 512 chiều. Chỉ dùng cho nghiên cứu (license InsightFace); thương mại phải thay model.
+#
+# Vào: crop từng mặt của SGIE1 (gie 2, class 0), kéo về 112x112.
+# Ra : KHÔNG phải bbox hay nhãn (network-type=100): nvinfer gắn tensor thô vào object mặt
+#      (NvDsInferTensorMeta trong obj_user_meta_list, unique_id = 3). App đọc 512 số, chuẩn hoá L2,
+#      tính cosine với gallery trong Redis (<prefix>:face_emb) -> sự kiện face_recognized.
+# Ảnh đăng ký trên web đi qua đúng tiền xử lý này (web/faces.py), để 2 bên ra vector cùng không gian.
+[property]
+gpu-id=0
+onnx-file=/workspace/models/buffalo_s/w600k_mbf.onnx
+model-engine-file=/workspace/models/buffalo_s/w600k_mbf.onnx_b32_gpu0_fp16.engine
+batch-size=32
+network-mode=2
+
+# --- Tiền xử lý InsightFace: RGB, (pixel - 127.5) / 127.5 ---
+net-scale-factor=0.0078125
+offsets=127.5;127.5;127.5
+model-color-format=0
+# Kéo thẳng bbox mặt về 112x112, nội suy bilinear (mặc định nearest) - giống web khi đăng ký
+maintain-aspect-ratio=0
+scaling-filter=1
+
+# --- Chạy ở đâu ---
+process-mode=2
+gie-unique-id=3
+operate-on-gie-id=2
+operate-on-class-ids=0
+# Mặt nhỏ hơn 36 px (khung 1920x1080) quá mờ, vector không đáng tin
+input-object-min-width=36
+input-object-min-height=36
+
+# --- Hậu xử lý: không parse, xuất tensor cho app ---
+network-type=100
+output-tensor-meta=1

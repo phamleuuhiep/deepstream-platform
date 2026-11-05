@@ -1,0 +1,222 @@
+{
+  "companies": [
+    {
+      "id": "acme",
+      "name": "ACME Việt Nam",
+      "buildings": [
+        {
+          "id": "A",
+          "name": "Toà A",
+          "address": "12 Nguyễn Huệ, Q.1, TP.HCM",
+          "cameras": [
+            {
+              "id": "acme-A-cam1",
+              "name": "Camera 1 toà A",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "dwell_sitting_180s.mp4",
+              "fps": 0,
+              "start": 0
+            },
+            {
+              "id": "acme-A-cam2",
+              "name": "Camera 2 toà A",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "sample_1080p_h264.mp4",
+              "fps": 0,
+              "start": 0
+            },
+            {
+              "id": "acme-A-cam3",
+              "name": "Camera 3 toà A",
+              "floor": "3",
+              "zone": "Hành lang",
+              "video": "sample_cam5.mp4",
+              "fps": 0,
+              "start": 0
+            },
+            {
+              "id": "acme-A-cam4",
+              "name": "Camera 4 toà A***",
+              "floor": "1",
+              "zone": "Văn phòng",
+              "video": "hiep_test.mp4",
+              "fps": 0,
+              "start": 0
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "name": "Toà B",
+          "address": "12 Nguyễn Huệ, Q.1, TP.HCM",
+          "cameras": [
+            {
+              "id": "acme-B-cam1",
+              "name": "Camera 1 toà B",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "sample_1080p_h264.mp4",
+              "fps": 0,
+              "start": 13
+            },
+            {
+              "id": "acme-B-cam2",
+              "name": "Camera 2 toà B",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "dwell_sitting_180s.mp4",
+              "fps": 0,
+              "start": 13
+            },
+            {
+              "id": "acme-B-cam3",
+              "name": "Camera 3 toà B",
+              "floor": "3",
+              "zone": "Hành lang",
+              "video": "sample_cam6.mp4",
+              "fps": 0,
+              "start": 0
+            },
+            {
+              "id": "acme-B-cam4",
+              "name": "Camera 4 toà B",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "sample_1080p_h265.mp4",
+              "fps": 0,
+              "start": 13
+            },
+            {
+              "id": "acme-B-cam5",
+              "name": "Camera 5 toà B",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "sample_1080p_h264.mp4",
+              "fps": 0,
+              "start": 26
+            },
+            {
+              "id": "acme-B-cam6",
+              "name": "Camera 6 toà B",
+              "floor": "3",
+              "zone": "Hành lang",
+              "video": "dwell_sitting_180s.mp4",
+              "fps": 0,
+              "start": 26
+            },
+            {
+              "id": "acme-B-cam7",
+              "name": "Camera 7 toà B",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "sample_cam6.mp4",
+              "fps": 0,
+              "start": 13
+            },
+            {
+              "id": "acme-B-cam8",
+              "name": "Camera 8 toà B",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "sample_1080p_h265.mp4",
+              "fps": 0,
+              "start": 26
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "globex",
+      "name": "Globex Corp",
+      "buildings": [
+        {
+          "id": "A",
+          "name": "Toà A",
+          "address": "45 Láng Hạ, Đống Đa, Hà Nội",
+          "cameras": [
+            {
+              "id": "globex-A-cam1",
+              "name": "Camera 1 toà A",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "dwell_sitting_180s.mp4",
+              "fps": 0,
+              "start": 39
+            },
+            {
+              "id": "globex-A-cam2",
+              "name": "Camera 2 toà A",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "sample_cam5.mp4",
+              "fps": 0,
+              "start": 13
+            }
+          ]
+        },
+        {
+          "id": "B",
+          "name": "Toà B",
+          "address": "45 Láng Hạ, Đống Đa, Hà Nội",
+          "cameras": [
+            {
+              "id": "globex-B-cam1",
+              "name": "Camera 1 toà B",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "sample_1080p_h265.mp4",
+              "fps": 0,
+              "start": 39
+            },
+            {
+              "id": "globex-B-cam2",
+              "name": "Camera 2 toà B",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "sample_1080p_h264.mp4",
+              "fps": 0,
+              "start": 39
+            }
+          ]
+        },
+        {
+          "id": "C",
+          "name": "Toà C",
+          "address": "45 Láng Hạ, Đống Đa, Hà Nội",
+          "cameras": [
+            {
+              "id": "globex-C-cam1",
+              "name": "Camera 1 toà C",
+              "floor": "1",
+              "zone": "Sảnh",
+              "video": "sample_cam6.mp4",
+              "fps": 0,
+              "start": 26
+            },
+            {
+              "id": "globex-C-cam2",
+              "name": "Camera 2 toà C",
+              "floor": "2",
+              "zone": "Khu chờ",
+              "video": "dwell_sitting_180s.mp4",
+              "fps": 0,
+              "start": 52
+            },
+            {
+              "id": "globex-C-cam3",
+              "name": "Camera 3 toà C",
+              "floor": "3",
+              "zone": "Hành lang",
+              "video": "sample_1080p_h264.mp4",
+              "fps": 0,
+              "start": 9
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

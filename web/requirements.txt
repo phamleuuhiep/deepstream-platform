@@ -1,0 +1,9 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+redis==5.2.1
+httpx==0.28.1
+websockets==13.1
+# Đăng ký khuôn mặt bằng ảnh (web/faces.py): SCRFD + ArcFace chạy CPU
+onnxruntime==1.20.1
+numpy==2.1.3
+pillow==11.0.0

@@ -1,0 +1,41 @@
+# ============================================================================================
+# Tầng 4 / 4 - SGIE3: phân loại khách VIP / khách thường trên bbox người
+# ============================================================================================
+# CHƯA CÓ MODEL: chờ team AI train (xem docs/PIPELINE_KHUON_MAT_VIP.md, mục "Model VIP").
+# Khi có models/vip_classifier.onnx + models/vip_classifier_labels.txt (1 dòng: "normal;vip"),
+# scripts/run_face.sh và nút "Chạy lại app" của master tự thêm tầng này.
+#
+# Hạng khách cuối cùng app gửi lên (objs[].tier, tier_src):
+#   1. Mặt khớp người đã đăng ký  -> hạng ghi lúc đăng ký (vip / normal), tier_src = "face"
+#   2. Không khớp, có tầng này      -> nhãn classifier (vip / normal),        tier_src = "classifier"
+#   3. Không có cả hai              -> không có "tier" (chưa xác định)
+# Classifier ra "vip" ở người chưa đăng ký -> sự kiện vip_detected (1 lần / track).
+[property]
+gpu-id=0
+onnx-file=/workspace/models/vip_classifier.onnx
+model-engine-file=/workspace/models/vip_classifier.onnx_b16_gpu0_fp16.engine
+# 1 dòng, các nhãn cách nhau bằng ";", đúng thứ tự output của model. App tìm nhãn "vip".
+labelfile-path=/workspace/models/vip_classifier_labels.txt
+batch-size=16
+network-mode=2
+# Tiền xử lý ImageNet (sửa theo lúc train): offsets = mean*255, net-scale-factor = 1/(std*255)
+net-scale-factor=0.017507
+offsets=123.675;116.28;103.53
+model-color-format=0
+maintain-aspect-ratio=1
+symmetric-padding=1
+infer-dims=3;224;224
+
+process-mode=2
+gie-unique-id=4
+operate-on-gie-id=1
+operate-on-class-ids=0
+input-object-min-width=48
+input-object-min-height=120
+
+# 1 = classifier: nvinfer tự softmax/argmax, gắn NvDsClassifierMeta vào object person
+network-type=1
+classifier-threshold=0.6
+# Không chạy lại mỗi frame cho cùng 1 track: chỉ khi bbox to ra 20% hoặc sau 30 frame
+classifier-async-mode=1
+secondary-reinfer-interval=30

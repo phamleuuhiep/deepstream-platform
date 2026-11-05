@@ -1,0 +1,59 @@
+# ============================================================================================
+# Tầng 1 / 4 - PGIE: YOLO11s COCO, phát hiện 80 class trên cả khung hình
+# ============================================================================================
+# Pipeline nhiều tầng (xem docs/PIPELINE_KHUON_MAT_VIP.md):
+#   [PGIE  gie 1] YOLO11 COCO 80 class   -> person, car, bag, ... (class 0 = person)
+#   [tracker]     NvDCF                   -> tracking ID cho mọi object
+#   [SGIE1 gie 2] FaceNet                 -> mặt, CHỈ trong bbox person (class 0 của gie 1)
+#   [SGIE2 gie 3] ArcFace                 -> vector 512 chiều cho từng mặt (gie 2) -> so với gallery
+#   [SGIE3 gie 4] VIP classifier          -> khách VIP / khách thường trên person (gie 1, class 0)
+#
+# COCO: YOLO dùng 80 class (bản 2017 bỏ 11 ID không có ảnh trong 91 ID gốc của bài báo COCO).
+# Danh sách + thứ tự: models/yolo11s_labels.txt (dòng 1 = person = class 0, nên app chạy với -p 0).
+# Tạo model: ./scripts/prepare_models.sh
+[property]
+gpu-id=0
+
+# --- Model ---
+onnx-file=/workspace/models/yolo11s.onnx
+# Engine nvinfer tự build lần đầu (~5 phút). Engine tạo qua engine-create-func-name luôn có tên
+# model_b<batch>_gpu0_fp16.engine; app đổi _b4_ thành số camera và lưu engine mới vào đúng thư mục này
+model-engine-file=/workspace/models/yolo11s_engine/model_b4_gpu0_fp16.engine
+labelfile-path=/workspace/models/yolo11s_labels.txt
+batch-size=4
+# 0=FP32, 1=INT8, 2=FP16
+network-mode=2
+num-detected-classes=80
+# 1 = chạy trên cả frame (primary)
+process-mode=1
+# ID của tầng này; các SGIE trỏ vào nó bằng operate-on-gie-id=1
+gie-unique-id=1
+# 0 = detector
+network-type=0
+# Detect mọi frame; =1 thì detect 1 frame bỏ 1, tracker nội suy (đỡ ~45% GPU)
+interval=0
+
+# --- Tiền xử lý: theo export của DeepStream-Yolo (RGB, chia 255, letterbox giữa) ---
+net-scale-factor=0.0039215697906911373
+offsets=0;0;0
+model-color-format=0
+maintain-aspect-ratio=1
+symmetric-padding=1
+
+# --- Hậu xử lý: output YOLO được parse bằng lib của DeepStream-Yolo, NMS do nvinfer làm ---
+parse-bbox-func-name=NvDsInferParseYolo
+custom-lib-path=/workspace/models/libnvdsinfer_custom_impl_Yolo.so
+engine-create-func-name=NvDsInferYoloCudaEngineGet
+# 2 = NMS
+cluster-mode=2
+
+[class-attrs-all]
+pre-cluster-threshold=0.25
+nms-iou-threshold=0.45
+topk=300
+
+# Người (class 0): ngưỡng thấp hơn để không sót người ngồi / bị che một phần
+[class-attrs-0]
+pre-cluster-threshold=0.3
+nms-iou-threshold=0.5
+topk=300

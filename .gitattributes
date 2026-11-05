@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.mp4 binary
+*.zip binary
+*.min.js -diff linguist-vendored

@@ -1,0 +1,34 @@
+# SGIE mẫu (chạy được ngay): phân loại loại xe trên các object class 0 (car) của PGIE.
+# Dùng làm khuôn cho classifier của team AI, vd. ngồi/đứng trên class person:
+#   operate-on-class-ids=<class người của PGIE>, onnx-file=..., labelfile-path=..., infer-dims=...
+# Chạy: ./scripts/run_w1.sh 4 -S /workspace/configs/sgie_example_vehicletype.txt
+# Kết quả nằm trong ds:frames -> objs[].attrs = [{"gie":2,"label":"sedan","prob":0.93}]
+[property]
+gpu-id=0
+net-scale-factor=1
+tlt-model-key=tlt_encode
+tlt-encoded-model=/opt/nvidia/deepstream/deepstream/samples/models/Secondary_VehicleTypes/resnet18_vehicletypenet.etlt
+model-engine-file=/opt/nvidia/deepstream/deepstream/samples/models/Secondary_VehicleTypes/resnet18_vehicletypenet.etlt_b16_gpu0_int8.engine
+labelfile-path=/opt/nvidia/deepstream/deepstream/samples/models/Secondary_VehicleTypes/labels.txt
+int8-calib-file=/opt/nvidia/deepstream/deepstream/samples/models/Secondary_VehicleTypes/cal_trt.bin
+force-implicit-batch-dim=1
+batch-size=16
+network-mode=1
+# Bỏ qua object nhỏ hơn (pixel)
+input-object-min-width=64
+input-object-min-height=64
+# 2 = chạy trên object (SGIE), 1 = chạy trên cả frame (PGIE)
+process-mode=2
+model-color-format=1
+# ID riêng của model này, phải khác PGIE (1); xuất hiện ở attrs[].gie
+gie-unique-id=2
+# Chạy trên kết quả của PGIE (gie-unique-id=1), chỉ các class liệt kê
+operate-on-gie-id=1
+operate-on-class-ids=0
+is-classifier=1
+uff-input-blob-name=input_1
+output-blob-names=predictions/Softmax
+# async: không chạy lại mỗi frame cho cùng 1 track (tiết kiệm GPU)
+classifier-async-mode=1
+classifier-threshold=0.51
+infer-dims=3;224;224

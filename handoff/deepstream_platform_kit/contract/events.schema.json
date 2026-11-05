@@ -1,0 +1,444 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ds-events.schema.json",
+  "title": "ds:events - field data (JSON) của mỗi entry",
+  "description": "Mỗi entry Redis Stream có 4 field: cam (string), type (string, trùng data.type), ts (epoch ms, dạng chuỗi), data (chuỗi JSON theo schema này). Thời gian ISO luôn là UTC, đuôi Z. schema_version 2 (05/11/2026): mọi sự kiện có schema_version; khi app bật upload (-M), mỗi field đường dẫn file (snapshot, file, face_crop, crop, source) có thêm <field>_url (URL S3/MinIO), ảnh *_frame.jpg có thêm <field>_crop_url; thêm face_recognized, vip_detected, system_heal; dwell_end.reason thêm left_roi.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/dwell_alert"
+    },
+    {
+      "$ref": "#/$defs/dwell_end"
+    },
+    {
+      "$ref": "#/$defs/clip_ready"
+    },
+    {
+      "$ref": "#/$defs/clip_annotated"
+    },
+    {
+      "$ref": "#/$defs/camera_status"
+    },
+    {
+      "$ref": "#/$defs/face_recognized"
+    },
+    {
+      "$ref": "#/$defs/vip_detected"
+    },
+    {
+      "$ref": "#/$defs/system_heal"
+    }
+  ],
+  "$defs": {
+    "iso_utc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$"
+    },
+    "bbox": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4,
+      "description": "[left, top, width, height] pixel trên khung 1920x1080 của streammux"
+    },
+    "dwell_common": {
+      "type": "object",
+      "required": [
+        "type",
+        "cam",
+        "tid",
+        "start_ts",
+        "start_ms",
+        "dwell_s",
+        "bbox",
+        "snapshot",
+        "clip",
+        "schema_version"
+      ],
+      "properties": {
+        "cam": {
+          "type": "string"
+        },
+        "tid": {
+          "type": "integer",
+          "description": "tracking ID, chỉ duy nhất trong 1 cam và 1 lần chạy app"
+        },
+        "start_ts": {
+          "$ref": "#/$defs/iso_utc"
+        },
+        "start_ms": {
+          "type": "integer",
+          "description": "epoch ms lúc bắt đầu ở yên. (cam, tid, start_ms) là khoá của 1 lượt ở yên"
+        },
+        "dwell_s": {
+          "type": "number"
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "snapshot": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "đường dẫn JPEG toàn khung; ảnh crop = thay _frame.jpg bằng _crop.jpg"
+        },
+        "clip": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "\"pending:<tag>\"; khớp với clip_ready.tag. null nếu tắt smart record"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        }
+      },
+      "patternProperties": {
+        "_url$": {
+          "$ref": "#/$defs/url"
+        }
+      }
+    },
+    "dwell_alert": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dwell_common"
+        }
+      ],
+      "required": [
+        "alert_ts"
+      ],
+      "properties": {
+        "type": {
+          "const": "dwell_alert"
+        },
+        "alert_ts": {
+          "$ref": "#/$defs/iso_utc"
+        }
+      }
+    },
+    "dwell_end": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/dwell_common"
+        }
+      ],
+      "required": [
+        "end_ts",
+        "reason"
+      ],
+      "properties": {
+        "type": {
+          "const": "dwell_end"
+        },
+        "end_ts": {
+          "$ref": "#/$defs/iso_utc"
+        },
+        "reason": {
+          "enum": [
+            "moved",
+            "lost",
+            "shutdown",
+            "left_roi"
+          ],
+          "description": "left_roi: người ra khỏi vùng ghế (ROI) của camera"
+        }
+      }
+    },
+    "clip_ready": {
+      "type": "object",
+      "required": [
+        "type",
+        "cam",
+        "tag",
+        "file",
+        "duration_ms",
+        "schema_version"
+      ],
+      "properties": {
+        "type": {
+          "const": "clip_ready"
+        },
+        "cam": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string",
+          "description": "MP4 gốc của camera (không có khung)"
+        },
+        "duration_ms": {
+          "type": "integer"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        }
+      },
+      "patternProperties": {
+        "_url$": {
+          "$ref": "#/$defs/url"
+        }
+      }
+    },
+    "clip_annotated": {
+      "type": "object",
+      "required": [
+        "type",
+        "cam",
+        "tag",
+        "file",
+        "source",
+        "schema_version"
+      ],
+      "properties": {
+        "type": {
+          "const": "clip_annotated"
+        },
+        "cam": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string",
+          "description": "MP4 đã vẽ khung (*_bbox.mp4)"
+        },
+        "source": {
+          "type": "string",
+          "description": "clip gốc tương ứng"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        }
+      },
+      "patternProperties": {
+        "_url$": {
+          "$ref": "#/$defs/url"
+        }
+      }
+    },
+    "camera_status": {
+      "type": "object",
+      "required": [
+        "type",
+        "cam",
+        "uri",
+        "ts",
+        "silent_s",
+        "schema_version"
+      ],
+      "properties": {
+        "type": {
+          "enum": [
+            "camera_online",
+            "camera_offline"
+          ]
+        },
+        "cam": {
+          "type": "string"
+        },
+        "uri": {
+          "type": "string"
+        },
+        "ts": {
+          "$ref": "#/$defs/iso_utc"
+        },
+        "silent_s": {
+          "type": "number",
+          "description": "số giây không có hình trước sự kiện"
+        },
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        }
+      },
+      "patternProperties": {
+        "_url$": {
+          "$ref": "#/$defs/url"
+        }
+      }
+    },
+    "schema_version": {
+      "const": 2,
+      "description": "Tăng khi đổi ý nghĩa field. Bản cũ (tuần 1) không có field này = 1"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL tải file đã upload lên S3/MinIO; file lên S3 vài giây sau sự kiện (clip: sau clip_ready)"
+    },
+    "face_recognized": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "cam",
+        "ts",
+        "tid",
+        "person_id",
+        "name",
+        "tier",
+        "score",
+        "bbox",
+        "face_bbox"
+      ],
+      "patternProperties": {
+        "_url$": {
+          "$ref": "#/$defs/url"
+        }
+      },
+      "properties": {
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "type": {
+          "const": "face_recognized"
+        },
+        "cam": {
+          "type": "string"
+        },
+        "ts": {
+          "$ref": "#/$defs/iso_utc"
+        },
+        "tid": {
+          "type": "integer",
+          "description": "tracking ID của người"
+        },
+        "person_id": {
+          "type": "string",
+          "description": "id hồ sơ người đã đăng ký (ds:faces)"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tier": {
+          "enum": [
+            "vip",
+            "normal"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "description": "cosine ArcFace, >= ngưỡng -F (mặc định 0.55)"
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "face_bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "snapshot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "face_crop": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "vip_detected": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "cam",
+        "ts",
+        "tid",
+        "tier",
+        "source",
+        "prob",
+        "bbox"
+      ],
+      "patternProperties": {
+        "_url$": {
+          "$ref": "#/$defs/url"
+        }
+      },
+      "properties": {
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "type": {
+          "const": "vip_detected"
+        },
+        "cam": {
+          "type": "string"
+        },
+        "ts": {
+          "$ref": "#/$defs/iso_utc"
+        },
+        "tid": {
+          "type": "integer"
+        },
+        "tier": {
+          "const": "vip"
+        },
+        "source": {
+          "const": "classifier"
+        },
+        "prob": {
+          "type": "number"
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "snapshot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "crop": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "system_heal": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "type",
+        "detail",
+        "components"
+      ],
+      "description": "Agent master tự bật lại thành phần đã chết (cam = \"system\")",
+      "properties": {
+        "schema_version": {
+          "$ref": "#/$defs/schema_version"
+        },
+        "type": {
+          "const": "system_heal"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "components": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "ds",
+              "redis",
+              "sim",
+              "upload",
+              "app",
+              "web"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

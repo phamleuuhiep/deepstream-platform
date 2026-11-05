@@ -1,0 +1,707 @@
+{
+ "uid": "deepstream-pipeline",
+ "title": "DeepStream pipeline",
+ "tags": [
+  "deepstream"
+ ],
+ "timezone": "Asia/Ho_Chi_Minh",
+ "refresh": "10s",
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "schemaVersion": 39,
+ "version": 1,
+ "panels": [
+  {
+   "type": "stat",
+   "title": "App chạy",
+   "description": "Số instance w1-app đang gửi thống kê (mỗi GPU 1 instance)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 4,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_app_up{prefix=~\"$prefix\"})",
+     "legendFormat": "instance"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "red",
+        "value": null
+       },
+       {
+        "color": "green",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "area"
+   },
+   "id": 1
+  },
+  {
+   "type": "stat",
+   "title": "Cam có hình",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 4,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_cams_online{prefix=~\"$prefix\"})",
+     "legendFormat": "có hình"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_cams_total{prefix=~\"$prefix\"})",
+     "legendFormat": "tổng"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "green"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "area"
+   },
+   "id": 2
+  },
+  {
+   "type": "stat",
+   "title": "FPS tổng",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 9,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_fps_total{prefix=~\"$prefix\"})",
+     "legendFormat": "FPS"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "green"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "area"
+   },
+   "id": 3
+  },
+  {
+   "type": "stat",
+   "title": "Redis queue / drop",
+   "description": "drop = metadata frame bị bỏ khi Redis chậm/chết (sự kiện không bao giờ bị bỏ)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 14,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_redis_queue{prefix=~\"$prefix\"})",
+     "legendFormat": "queue"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_messages_dropped_total{prefix=~\"$prefix\"})",
+     "legendFormat": "drop"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 1
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "area"
+   },
+   "id": 4
+  },
+  {
+   "type": "stat",
+   "title": "Cảnh báo ở yên (24h)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 19,
+    "y": 0,
+    "w": 5,
+    "h": 4
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(increase(ds_events_by_type_total{type=\"dwell_alert\"}[24h]))",
+     "legendFormat": "dwell_alert"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "blue",
+        "value": null
+       }
+      ]
+     },
+     "color": {
+      "mode": "thresholds"
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "background",
+    "graphMode": "area"
+   },
+   "id": 5
+  },
+  {
+   "type": "timeseries",
+   "title": "FPS từng camera",
+   "description": "Cam = 0 là mất hình",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 16,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "ds_cam_fps{prefix=~\"$prefix\"}",
+     "legendFormat": "{{cam}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 6
+  },
+  {
+   "type": "timeseries",
+   "title": "Cam có hình theo thời gian",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 4,
+    "w": 8,
+    "h": 9
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_cams_online{prefix=~\"$prefix\"})",
+     "legendFormat": "có hình"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_cams_total{prefix=~\"$prefix\"})",
+     "legendFormat": "tổng"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 7
+  },
+  {
+   "type": "timeseries",
+   "title": "Sự kiện / phút theo loại",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 13,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum by (type) (rate(ds_events_by_type_total[2m])) * 60",
+     "legendFormat": "{{type}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 8
+  },
+  {
+   "type": "timeseries",
+   "title": "Redis: queue, message gửi/s, drop",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 12,
+    "y": 13,
+    "w": 12,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(ds_redis_queue{prefix=~\"$prefix\"})",
+     "legendFormat": "queue"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(rate(ds_messages_sent_total{prefix=~\"$prefix\"}[1m]))",
+     "legendFormat": "gửi/s"
+    },
+    {
+     "refId": "C",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "sum(rate(ds_messages_dropped_total{prefix=~\"$prefix\"}[1m]))",
+     "legendFormat": "drop/s"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 9
+  },
+  {
+   "type": "timeseries",
+   "title": "RAM app (RSS)",
+   "description": "Soak test: không được tăng dần",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 0,
+    "y": 21,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "ds_app_rss_bytes",
+     "legendFormat": "{{prefix}} GPU {{gpu}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 10
+  },
+  {
+   "type": "timeseries",
+   "title": "VRAM app",
+   "description": "Soak test: không được tăng dần",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 8,
+    "y": 21,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "ds_app_vram_bytes",
+     "legendFormat": "{{prefix}} GPU {{gpu}}"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "bytes",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 11
+  },
+  {
+   "type": "timeseries",
+   "title": "Upload ảnh/clip (S3)",
+   "description": "",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "ds-prom"
+   },
+   "gridPos": {
+    "x": 16,
+    "y": 21,
+    "w": 8,
+    "h": 8
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "ds_upload_pending_events",
+     "legendFormat": "sự kiện chờ upload"
+    },
+    {
+     "refId": "B",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "ds_upload_s3_up",
+     "legendFormat": "S3 up"
+    },
+    {
+     "refId": "C",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "ds-prom"
+     },
+     "expr": "rate(ds_upload_files_total[5m]) * 60",
+     "legendFormat": "file/phút"
+    }
+   ],
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 10,
+      "stacking": {
+       "mode": "none"
+      }
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom"
+    },
+    "tooltip": {
+     "mode": "multi"
+    }
+   },
+   "id": 12
+  }
+ ],
+ "description": "w1-app: fps/cam, cam có hình, Redis queue/drop, sự kiện, RAM/VRAM, upload S3. Exporter: monitor/ds_exporter.py",
+ "templating": {
+  "list": [
+   {
+    "name": "prefix",
+    "label": "Prefix Redis",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "ds-prom"
+    },
+    "query": "label_values(ds_app_up, prefix)",
+    "current": {
+     "text": "ds",
+     "value": "ds"
+    },
+    "includeAll": true,
+    "multi": true,
+    "refresh": 2
+   }
+  ]
+ }
+}

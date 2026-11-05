@@ -1,0 +1,8 @@
+# Prometheus riêng của dự án (ds_prometheus, ./scripts/monitor.sh start). Prometheus chung của server
+# (/home/nhatdm/monitoring) thêm đúng job này là đọc được cùng số liệu, xem docs/BAO_CAO_TUAN2.md.
+global:
+  scrape_interval: 5s
+scrape_configs:
+  - job_name: deepstream
+    static_configs:
+      - targets: ["EXPORTER_ADDR"]

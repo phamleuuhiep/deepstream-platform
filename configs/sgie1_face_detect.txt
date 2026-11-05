@@ -1,0 +1,52 @@
+# ============================================================================================
+# Tầng 2 / 4 - SGIE1: tìm khuôn mặt, CHỈ trong bbox người của PGIE
+# ============================================================================================
+# Model: NVIDIA TAO FaceNet (DetectNet_v2, ResNet18, 1 class "face"), INT8. nvinfer parse sẵn output
+# DetectNet_v2 (output_cov / output_bbox) nên không cần lib riêng. Tải: ./scripts/prepare_models.sh
+#
+# Vào: crop từng bbox person (gie 1, class 0) đã có tracking ID, scale giữ tỉ lệ vào 736x416.
+# Ra : object mới, label "face", unique_component_id = 2, parent = object person
+#      (toạ độ đã đổi về khung 1920x1080 của streammux). App lấy parent->object_id làm ID người.
+[property]
+gpu-id=0
+tlt-model-key=nvidia_tlt
+tlt-encoded-model=/workspace/models/facenet/model.etlt
+int8-calib-file=/workspace/models/facenet/int8_calibration.txt
+model-engine-file=/workspace/models/facenet/model.etlt_b16_gpu0_int8.engine
+labelfile-path=/workspace/configs/labels_face.txt
+uff-input-order=0
+uff-input-blob-name=input_1
+output-blob-names=output_cov/Sigmoid;output_bbox/BiasAdd
+force-implicit-batch-dim=1
+infer-dims=3;416;736
+# Số crop người mỗi lần chạy model
+batch-size=16
+network-mode=1
+num-detected-classes=1
+network-type=0
+
+# --- Tiền xử lý: RGB, chia 255. Giữ tỉ lệ để mặt không bị kéo méo (crop người cao, input ngang) ---
+net-scale-factor=0.0039215697906911373
+model-color-format=0
+maintain-aspect-ratio=1
+symmetric-padding=1
+
+# --- Chạy ở đâu ---
+# 2 = secondary: chạy trên object của tầng trước, không chạy trên cả frame
+process-mode=2
+gie-unique-id=2
+operate-on-gie-id=1
+# class 0 của YOLO COCO = person
+operate-on-class-ids=0
+# Người quá nhỏ (xa camera) thì mặt chỉ vài pixel, không nhận diện được: bỏ qua cho đỡ GPU
+input-object-min-width=40
+input-object-min-height=100
+# Cùng 1 track người chỉ tìm mặt lại sau 4 frame (~7 lần/giây ở 30 fps): đủ mẫu để nhận diện,
+# đỡ 80% GPU so với mọi frame. Mặt chỉ xuất hiện trong metadata ở các frame có chạy tầng này.
+secondary-reinfer-interval=4
+
+cluster-mode=2
+[class-attrs-all]
+pre-cluster-threshold=0.35
+nms-iou-threshold=0.4
+topk=2

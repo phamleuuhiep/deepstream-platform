@@ -1,0 +1,1305 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepStream Platform Demo</title>
+<style>
+:root {
+  --bg: #0f1216; --panel: #171b21; --panel-2: #1e232b; --line: #2a313b;
+  --text: #e6e9ee; --muted: #8b95a3; --accent: #4c9eff;
+  --ok: #2fbf71; --warn: #f2b33d; --bad: #f0524f; --vehicle: #7aa2c8; --vip: #f5c542; --face: #5ad1e6;
+  --radius: 8px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* nav, a.btn có display riêng sẽ đè hidden */
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  font-size: 12px; color: var(--muted); white-space: nowrap; }
+.chip b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--muted); }
+.dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+nav { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+nav button { background: none; border: 0; color: var(--muted); padding: 10px 14px; font: inherit; cursor: pointer;
+  border-bottom: 2px solid transparent; }
+nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+nav .badge { background: var(--bad); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; margin-left: 6px; }
+main { padding: 16px 20px 40px; }
+.banner { background: #3a2a12; border: 1px solid #6b4a17; color: #f6d39a; padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px; }
+.hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.empty { color: var(--muted); padding: 40px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
+
+/* Camera */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.group-head { grid-column: 1 / -1; display: flex; gap: 10px; align-items: baseline; margin: 8px 0 -4px;
+  font-weight: 600; font-size: 14px; }
+.group-head:first-child { margin-top: 0; }
+.group-head .meta { color: var(--muted); font-weight: 400; font-size: 12px; }
+a.btn { display: inline-block; text-decoration: none; }
+/* Trang 1 camera (<dashboard>/cam/<camera_id>) */
+.cv { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; margin-bottom: 20px; }
+.cv-info { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; font-size: 13px; }
+.cv-info h2 { font-size: 15px; margin: 0 0 10px; }
+.cv-info dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; margin: 0; }
+.cv-info dt { color: var(--muted); }
+.cv-info dd { margin: 0; word-break: break-word; font-variant-numeric: tabular-nums; }
+.tile-head .name small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+@media (max-width: 900px) { .cv { grid-template-columns: 1fr; } }
+.companies { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.companies a { color: var(--accent); text-decoration: none; background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 12px; font-size: 13px; }
+.companies a:hover { border-color: var(--accent); }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+.tile:hover { border-color: var(--accent); }
+.tile.off { opacity: .6; }
+.tile-head { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; font-size: 13px; }
+.tile-head .name { font-weight: 600; }
+.tile-head .meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+canvas.live { display: block; width: 100%; aspect-ratio: 16 / 9; background: #0a0d10; }
+/* Ô camera: dưới là khung vẽ từ metadata; video live (nếu có) phủ lên khi đã có hình, kèm lớp bbox đồng bộ */
+.tile-media { position: relative; }
+.tile-media video, .tile-media canvas.ov { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tile-media video { object-fit: contain; background: transparent; }
+.tile-media canvas.ov { pointer-events: none; }
+.tile-foot { display: flex; gap: 12px; padding: 6px 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile-foot b { color: var(--text); }
+
+/* Alerts */
+.alerts { display: flex; flex-direction: column; gap: 12px; }
+.alert { display: grid; grid-template-columns: minmax(0, 360px) 1fr; gap: 16px; background: var(--panel);
+  border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: var(--radius); padding: 12px; }
+.alert.ended { border-left-color: var(--muted); }
+.snap { position: relative; border-radius: 6px; overflow: hidden; background: #0a0d10; aspect-ratio: 16 / 9; }
+.snap img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+.snap .box { position: absolute; border: 2px solid var(--bad); box-shadow: 0 0 0 1px #0008; pointer-events: none; }
+.snap .noimg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.alert-body { display: flex; gap: 14px; min-width: 0; }
+.crop { width: 84px; flex: none; }
+.crop img { width: 84px; border-radius: 6px; display: block; cursor: zoom-in; background: #0a0d10; }
+.info { min-width: 0; flex: 1; }
+.info h3 { margin: 0 0 6px; font-size: 15px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; font-size: 11px; border-radius: 4px; padding: 1px 7px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+.tag.bad { color: var(--bad); border-color: #6a2a29; } .tag.ok { color: var(--ok); border-color: #1f5a3b; } .tag.warn { color: var(--warn); border-color: #6b5217; }
+.actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px;
+  font: inherit; font-size: 13px; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+/* Events */
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+select { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { background: var(--panel); color: var(--muted); font-weight: 500; position: sticky; top: 0; }
+td.detail { white-space: normal; color: var(--muted); min-width: 280px; }
+tbody tr:hover { background: var(--panel); }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: #000c; display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; }
+.modal.open { display: flex; }
+.modal-inner { position: relative; max-width: min(1280px, 100%); width: 100%; }
+.modal-inner video, .modal-inner img, .modal-inner canvas { width: 100%; max-height: 80vh; object-fit: contain; display: block; background: #000; border-radius: 6px; }
+.modal-cap { color: var(--muted); font-size: 13px; margin-top: 8px; }
+.modal-close { position: absolute; top: -36px; right: 0; }
+.player { position: relative; width: 100%; aspect-ratio: 16 / 9; max-height: 80vh; background: #000; border-radius: 6px; overflow: hidden; }
+.player video, .player canvas { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; border-radius: 0; }
+.player video { object-fit: contain; }
+.player canvas { pointer-events: none; background: transparent; }
+.pl-status { position: absolute; left: 8px; top: 8px; background: #000a; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 4px; }
+.pl-status .live { color: var(--bad); font-weight: 700; margin-right: 6px; }
+.tile .live-tag { color: var(--bad); font-weight: 600; }
+
+/* ---------- dashboard master ---------- */
+input[type=text], input[type=number] { background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px; font: inherit; }
+input[type=number] { width: 80px; }
+.m-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; padding: 10px 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.m-bar .sp { flex: 1; }
+.m-co { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; }
+.m-co-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.m-co-head .co-name { font-weight: 600; width: 160px; }
+.m-co-head .info { color: var(--muted); font-size: 12px; }
+.m-co-head .info a { color: var(--accent); word-break: break-all; }
+.m-co-head .actions { margin-left: auto; display: flex; flex-wrap: wrap; gap: 6px; }
+.m-b { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.m-b:last-child { border-bottom: 0; }
+.m-b-head { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.m-b-head .lbl { color: var(--muted); font-size: 12px; }
+.m-b-head .sp { flex: 1; }
+.m-cams { width: 100%; border-collapse: collapse; font-size: 13px; }
+.m-cams th { text-align: left; color: var(--muted); font-weight: 400; font-size: 11px; padding: 2px 6px; }
+.m-cams td { padding: 3px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+.m-cams input[type=text] { width: 100%; min-width: 90px; }
+.m-cams input[type=number] { width: 70px; }
+.m-cams select { max-width: 220px; }
+.m-cams .st { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.btn.sm { padding: 3px 9px; font-size: 12px; }
+.btn.danger { color: var(--bad); }
+.m-log { background: #0a0d10; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; font: 12px/1.5 ui-monospace, monospace;
+  max-height: 280px; overflow: auto; white-space: pre-wrap; color: var(--muted); }
+.m-dirty { color: var(--warn); font-size: 12px; }
+.pw { font-family: ui-monospace, monospace; }
+.m-sys { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 14px; }
+.m-sys-head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.m-sys-head .sp { flex: 1; }
+.m-sys-row { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 13px; }
+.m-sys-row:first-of-type { border-top: 0; }
+.m-sys-row .nm { width: 190px; }
+.m-sys-row .dt { flex: 1; min-width: 200px; color: var(--muted); font-size: 12px; }
+
+/* ---------- khuôn mặt ---------- */
+.f-grid { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 16px; }
+.card h2 { font-size: 15px; margin: 0 0 10px; display: flex; gap: 8px; align-items: baseline; }
+.card h2 small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.f-form { display: grid; gap: 8px; }
+.f-form label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+.f-form input[type=text] { width: 100%; }
+.f-form label.btn { display: inline-block; color: var(--text); font-size: 13px; }
+.f-shots { display: flex; flex-wrap: wrap; gap: 6px; }
+.f-shots img, .f-thumb { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; background: #0a0d10; display: block; }
+.f-shots .x { position: relative; } .f-shots .x button { position: absolute; top: -6px; right: -6px; padding: 0 5px; font-size: 11px; }
+.f-cam video { width: 100%; border-radius: 6px; background: #000; transform: scaleX(-1); }   /* như gương, giống app selfie */
+.f-msg { font-size: 12px; min-height: 16px; } .f-msg.err { color: var(--bad); } .f-msg.ok { color: var(--ok); }
+.f-unk { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.f-unk figure { margin: 0; border: 2px solid transparent; border-radius: 8px; cursor: pointer; background: var(--panel-2); overflow: hidden; }
+.f-unk figure.sel { border-color: var(--accent); }
+.f-unk img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+.f-unk figcaption { font-size: 11px; color: var(--muted); padding: 3px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-people td { vertical-align: middle; }
+.tag.vip { color: #1a1400; background: var(--vip); border-color: var(--vip); font-weight: 600; }
+.f-hits { display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow: auto; }
+.f-hit { display: flex; gap: 10px; align-items: center; padding: 6px; border-radius: 6px; background: var(--panel-2); font-size: 13px; }
+.f-hit.vip { box-shadow: inset 3px 0 0 var(--vip); }
+.f-hit .t { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
+.toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 30; max-width: min(360px, calc(100vw - 32px)); }
+.toast { display: flex; gap: 10px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--ok);
+  border-radius: var(--radius); padding: 8px 12px 8px 8px; box-shadow: 0 6px 24px #0008; font-size: 13px; cursor: pointer; animation: tin .25s ease-out; }
+.toast.vip { border-left-color: var(--vip); background: #2a2410; }
+.toast b { display: block; font-size: 14px; } .toast small { color: var(--muted); }
+@keyframes tin { from { transform: translateY(12px); opacity: 0; } }
+@media (max-width: 900px) { .f-grid { grid-template-columns: 1fr; } }
+
+@media (max-width: 720px) {
+  .m-cams { display: block; overflow-x: auto; }
+  .m-co-head .actions { margin-left: 0; }
+  header, nav, main { padding-left: 16px; padding-right: 16px; }
+  .alert { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <a class="btn sm" id="backBtn" href="/" hidden>← Về master</a>
+  <h1 id="title">DeepStream · Platform demo</h1>
+  <div class="chips" id="chips"></div>
+</header>
+<nav id="nav">
+  <button data-tab="master" id="masterTab" hidden>Cấu hình (master)</button>
+  <button data-tab="cams" class="active">Camera</button>
+  <button data-tab="alerts">Cảnh báo <span class="badge" id="alertBadge" hidden>0</span></button>
+  <button data-tab="events">Sự kiện</button>
+  <button data-tab="faces">Khuôn mặt <span class="badge" id="faceBadge" hidden>0</span></button>
+</nav>
+<main>
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="tab-cams">
+    <p class="hint">Video live có vẽ khung: <span style="color:var(--ok)">■</span> người · <span style="color:var(--vehicle)">■</span> phương tiện / khác ·
+      <span style="color:var(--bad)">■</span> ở yên quá ngưỡng. Bấm vào camera để mở <b>link riêng</b> của camera đó.
+      <button class="btn sm" id="tileVideoBtn" style="margin-left:8px"></button></p>
+    <div class="companies" id="companies" hidden></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="tab-camview" hidden>
+    <div class="cv">
+      <div id="cvPlayer" class="player"></div>
+      <aside class="cv-info" id="cvInfo"></aside>
+    </div>
+    <h2 style="font-size:15px;margin:0 0 10px">Cảnh báo của camera này</h2>
+  </section>
+
+  <section id="tab-alerts" hidden>
+    <p class="hint">Mỗi thẻ là 1 lượt ở yên quá ngưỡng: ghép <code>dwell_alert</code> + <code>dwell_end</code> + <code>clip_ready</code> + <code>clip_annotated</code>.</p>
+    <div class="alerts" id="alerts"></div>
+  </section>
+
+  <section id="tab-events" hidden>
+    <div class="toolbar">
+      <label for="evType" class="hint" style="margin:0">Loại</label>
+      <select id="evType">
+        <option value="">Tất cả</option>
+        <option>dwell_alert</option><option>dwell_resume</option><option>dwell_end</option><option>clip_ready</option>
+        <option>clip_annotated</option><option>camera_online</option><option>camera_offline</option>
+        <option>face_recognized</option><option>vip_detected</option><option>system_heal</option>
+      </select>
+      <span class="hint" style="margin:0" id="evCount"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Thời gian</th><th>Cam</th><th>Loại</th><th>Chi tiết</th></tr></thead>
+      <tbody id="evBody"></tbody>
+    </table></div>
+  </section>
+
+  <section id="tab-faces" hidden>
+    <p class="hint">Pipeline: YOLO tìm người → FaceNet tìm mặt <b>trong khung người</b> → ArcFace tính vector 512 chiều → so với người đã đăng ký
+      (cosine). Khớp thì báo ở góc màn hình và vẽ tên lên video; hạng <span class="tag vip">VIP</span> lấy theo hồ sơ, người chưa đăng ký thì theo
+      classifier VIP (nếu team AI đã có model). Đăng ký/xoá có hiệu lực sau ~3 giây, không cần chạy lại app.</p>
+    <div class="f-grid">
+      <div>
+        <div class="card">
+          <h2>Đăng ký khuôn mặt</h2>
+          <div class="f-form">
+            <label>Họ tên<input type="text" id="fName" maxlength="80" placeholder="vd. Nguyễn Văn A"></label>
+            <label>Hạng khách<select id="fTier"><option value="normal">Khách thường</option><option value="vip">★ Khách VIP</option></select></label>
+            <label id="fCoWrap" hidden>Công ty (nhận diện ở camera của công ty nào)<select id="fCo"></select></label>
+            <div class="actions" style="margin:0">
+              <label class="btn">Chọn ảnh…<input type="file" id="fFiles" accept="image/*" multiple hidden></label>
+              <button class="btn" id="fCamBtn">Chụp bằng webcam</button>
+            </div>
+            <div class="f-cam" id="fCam" hidden><video id="fVideo" autoplay playsinline muted></video>
+              <div class="actions"><button class="btn primary" id="fSnap">Chụp</button><button class="btn" id="fCamOff">Tắt webcam</button></div></div>
+            <div class="f-shots" id="fShots"></div>
+            <p class="hint" style="margin:0">1–6 ảnh chính diện, rõ mặt, mỗi ảnh 1 người (lấy mặt to nhất). Nhiều góc / ánh sáng thì nhận tốt hơn.
+              Webcam cần mở dashboard qua https (link public) hoặc localhost.</p>
+            <button class="btn primary" id="fSave">Đăng ký</button>
+            <div class="f-msg" id="fMsg"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Nhận diện gần đây <small id="fHitsNote"></small></h2>
+          <div class="f-hits" id="fHits"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <h2>Mặt lạ camera vừa gặp <small>chọn 1 hoặc vài ảnh của cùng 1 người</small></h2>
+          <div class="actions" style="margin:0 0 10px">
+            <button class="btn primary" id="fUnkNew" disabled>Đăng ký người mới (tên, hạng ở form bên trái)</button>
+            <select id="fUnkTo"></select><button class="btn" id="fUnkAdd" disabled>Thêm làm mẫu cho người này</button>
+          </div>
+          <div class="f-unk" id="fUnk"></div>
+        </div>
+        <div class="card">
+          <h2>Người đã đăng ký <small id="fCount"></small></h2>
+          <div class="table-wrap"><table class="f-people"><thead><tr><th></th><th>Họ tên</th><th>Hạng</th><th>Công ty</th><th>Mẫu</th><th>Đăng ký lúc</th><th></th></tr></thead>
+            <tbody id="fPeople"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-master" hidden>
+    <p class="hint">Bấm <b>Vào dashboard</b> để xem camera, cảnh báo của từng công ty.
+      <b>Mã</b> công ty / toà dùng trong link và camera_id (chữ, số, _); <b>tên</b>, địa chỉ, tầng, khu vực là chữ tuỳ ý, gửi cho
+      platform qua Redis (<code>ds:camera_info</code>). Sửa rồi bấm <b>Lưu &amp; áp dụng</b>: bật lại camera giả lập, chạy lại app, tạo link public
+      cho công ty mới (công ty cũ giữ nguyên link), tắt link của công ty bị xoá.
+      <b>FPS xử lý</b>: số frame/giây app phân tích cho cam đó (0 = mọi frame, giảm để đỡ tải GPU).
+      <b>Bắt đầu (giây)</b>: video giả lập phát từ giây thứ mấy, để các cam dùng chung video không trùng hình.</p>
+    <div class="m-sys" id="mSys"></div>
+    <div class="m-bar">
+      <button class="btn" id="mAddCo">+ Thêm công ty</button>
+      <label class="hint" style="margin:0">Ngưỡng ở yên (giây) <input type="number" id="mDwell" min="10" max="3600"></label>
+      <label class="hint" style="margin:0"><input type="checkbox" id="mSr"> Ghi clip cảnh báo</label>
+      <label class="hint" style="margin:0" title="YOLO COCO 80 class + tìm mặt trong người + ArcFace + VIP. Cần ./scripts/prepare_models.sh"><input type="checkbox" id="mFace"> Nhận diện khuôn mặt + VIP</label>
+      <label class="hint" style="margin:0">ngưỡng cosine <input type="number" id="mFaceThr" min="0.2" max="0.9" step="0.01" style="width:64px"></label>
+      <label class="hint" style="margin:0" title="Agent kiểm tra mỗi 5 s, thành phần nào chết thì tự bật lại theo thứ tự (trừ app bạn đã bấm Dừng)"><input type="checkbox" id="mHeal"> Tự hồi phục</label>
+      <span class="m-dirty" id="mDirty" hidden>● Có thay đổi chưa áp dụng</span>
+      <span class="sp"></span>
+      <span class="hint" style="margin:0" id="mTotal"></span>
+      <button class="btn primary" id="mApply">Lưu &amp; áp dụng</button>
+    </div>
+    <div id="mCompanies"></div>
+    <div class="m-bar">
+      <b>Agent</b><span id="mAgent" class="hint" style="margin:0"></span>
+      <span class="sp"></span>
+      <button class="btn sm" data-act="app_restart">Chạy lại app</button>
+      <button class="btn sm danger" data-act="app_stop">Dừng app</button>
+      <button class="btn sm danger" data-act="clear_alerts" title="Xoá cảnh báo, ảnh, clip của mọi công ty, giữ 10 phút gần nhất">Xoá cảnh báo cũ</button>
+    </div>
+    <div class="m-log" id="mLog">Chưa có thao tác nào.</div>
+  </section>
+</main>
+
+<div class="toasts" id="toasts"></div>
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <button class="btn modal-close" id="modalClose">Đóng ✕</button>
+    <div id="modalBody"></div>
+    <div class="modal-cap" id="modalCap"></div>
+  </div>
+</div>
+
+<script src="/static/hls.min.js"></script>
+<script>
+/* Link riêng của 1 camera: <dashboard>/cam/<camera_id>. Thêm <base> trỏ về dashboard để mọi URL tương đối
+   (api/..., media/..., hls/...) dùng chung với trang dashboard */
+const CAM_MATCH = location.pathname.match(/^(.*\/)cam\/([^/]+)\/?$/);
+const CAM = CAM_MATCH ? decodeURIComponent(CAM_MATCH[2]) : null;
+if (CAM) { const b = document.createElement("base"); b.href = CAM_MATCH[1]; document.head.prepend(b); }
+const TZ = "Asia/Ho_Chi_Minh";
+const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString("vi-VN", { timeZone: TZ, hour12: false }) : "–";
+const fmtDate = ms => ms ? new Date(ms).toLocaleString("vi-VN", { timeZone: TZ, hour12: false }) : "–";
+const fmtNum = n => (n ?? 0).toLocaleString("vi-VN");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+let tab = "cams", lastState = null, zoomCam = null;
+
+/* ---------- tabs ---------- */
+function showTab(t) {
+  tab = t;
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x.dataset.tab === t));
+  ["cams", "alerts", "events", "faces", "master"].forEach(t => $("tab-" + t).hidden = t !== tab);
+  if (tab === "cams") observeTiles(); else stopAllTiles();
+  if (tab === "alerts") loadAlerts();
+  if (tab === "events") loadEvents();
+  if (tab === "master") loadMaster(true);
+  if (tab === "faces") { faceSeen = 0; $("faceBadge").hidden = true; loadFaces(); }
+}
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => showTab(b.dataset.tab));
+let masterInit = false;
+
+/* ---------- modal ---------- */
+function openModal(html, cap) {
+  $("modalBody").innerHTML = html; $("modalCap").textContent = cap || ""; $("modal").classList.add("open");
+}
+let modalCleanup = null;     // việc dọn khi đóng modal (vd. video HLS của trình vẽ vùng ghế)
+function closeModal() {
+  stopPlayer();
+  if (modalCleanup) { modalCleanup(); modalCleanup = null; }
+  $("modal").classList.remove("open"); $("modalBody").innerHTML = ""; zoomCam = null;
+}
+$("modalClose").onclick = closeModal;
+$("modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+/* ---------- vẽ bbox từ metadata ---------- */
+function drawLive(canvas, cam, big) {
+  const dpr = window.devicePixelRatio || 1;
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  if (!cw) return;
+  if (canvas.width !== cw * dpr) { canvas.width = cw * dpr; canvas.height = ch * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#0a0d10"; ctx.fillRect(0, 0, cw, ch);
+  if (!cam.online) {
+    ctx.fillStyle = css("--muted"); ctx.font = "13px system-ui"; ctx.textAlign = "center";
+    ctx.fillText(cam.age_s == null ? "Chưa có dữ liệu" : "Mất hình", cw / 2, ch / 2);
+    return;
+  }
+  const sx = cw / cam.w, sy = ch / cam.h;
+  ctx.font = (big ? 13 : 10) + "px system-ui"; ctx.textAlign = "left";
+  for (const o of cam.objs) {
+    const [l, t, w, h] = o.bbox, face = !!o.gie, person = o.label === "person" && !face, vip = o.tier === "vip";
+    const col = face ? css("--face") : vip ? css("--vip") : person ? css("--ok") : css("--vehicle");
+    ctx.strokeStyle = col; ctx.lineWidth = person ? 1.6 : 1;
+    ctx.strokeRect(l * sx, t * sy, w * sx, h * sy);
+    if (!face && (big || person)) {
+      const label = (big ? o.label + " " : "") + (o.face ? o.face.name : o.tid >= 0 ? "#" + o.tid : "") + (vip ? " ★VIP" : "");
+      if (label) { ctx.fillStyle = col; ctx.fillText(label, l * sx + 2, Math.max(10, t * sy - 3)); }
+    }
+  }
+}
+
+function camLine(c) {
+  return c.online ? `${c.fps} fps` : (c.age_s == null ? "chưa có dữ liệu" : `mất hình ${Math.round(c.age_s)}s`);
+}
+
+/* ---------- tổng quan ---------- */
+function renderChips(s) {
+  const admin = !s.company;
+  const redis = `<span class="dot ${s.redis ? "ok" : "bad"}"></span>Redis <b>${s.redis ? "UP" : "DOWN"}</b> ${esc(s.redis_addr)}`;
+  const camDot = s.cams_total && s.cams_online === s.cams_total ? "ok" : s.cams_online ? "warn" : "bad";
+  $("chips").innerHTML = [
+    admin ? redis : null,
+    `<span class="dot ${camDot}"></span>Cam có hình <b>${s.cams_online}/${s.cams_total}</b>`,
+    `Tổng <b>${fmtNum(s.fps_total)}</b> FPS`,
+    admin ? `ds:frames <b>${fmtNum(s.frames_len)}</b>` : null,
+    admin ? `ds:events <b>${fmtNum(s.events_len)}</b>` : null,
+  ].filter(Boolean).map(x => `<span class="chip">${x}</span>`).join("");
+  // Master (/ của admin): mở sẵn tab Cấu hình (1 lần); Camera / Cảnh báo / Sự kiện / Khuôn mặt xem mọi công ty
+  $("masterTab").hidden = !s.master;
+  if (s.master && !s.company && !CAM && !masterInit) { masterInit = true; showTab("master"); }
+  // Nút quay lại: trang 1 camera -> dashboard; admin đang xem 1 công ty -> master. Trang master thì không có
+  $("backBtn").hidden = !s.back && !CAM;
+  if (CAM) { $("backBtn").textContent = "← Dashboard"; $("backBtn").href = "./"; }
+  const camInfo = CAM && (s.cameras.find(c => c.cam === CAM) || {}).info || {};
+  const title = CAM ? `${camInfo.camera_name || CAM} · ${camInfo.building_name || ""} · ${camInfo.company_name || s.company_name || ""}`
+    : s.company ? `${s.company_name || s.company} · Giám sát camera` : s.master ? "DeepStream · Master" : "DeepStream · Admin (tất cả công ty)";
+  if ($("title").textContent !== title) { $("title").textContent = title; document.title = title; }
+  // Trang admin: link dashboard riêng của từng công ty
+  const box = $("companies"), links = s.companies.map(c => `<a href="c/${encodeURIComponent(c)}/">Dashboard ${esc(c)} ↗</a>`).join("");
+  box.hidden = !links;
+  if (box.innerHTML !== links) box.innerHTML = links;
+
+  const banner = $("banner");
+  if (!s.redis) { banner.hidden = false; banner.textContent = `Không kết nối được Redis ${s.redis_addr}. Trên host chạy: ./scripts/redis_dev.sh start`; }
+  else if (s.cams_total && !s.cams_online) { banner.hidden = false; banner.textContent = admin ? "Không có frame mới: w1-app chưa chạy, hoặc chưa có luồng RTSP (./scripts/rtsp_sim.sh start …; ./scripts/run_w1.sh …). Tab Cảnh báo và Sự kiện vẫn xem được dữ liệu cũ." : "Hiện không camera nào có hình. Tab Cảnh báo và Sự kiện vẫn xem được dữ liệu cũ."; }
+  else banner.hidden = true;
+}
+
+function renderGrid(s) {
+  const grid = $("grid");
+  if (!s.cameras.length) { grid.innerHTML = `<div class="empty">Chưa có camera nào trong Redis.</div>`; return; }
+  const ids = s.cameras.map(c => c.cam).join(",");
+  // Nhóm theo toà (admin: công ty · toà); cam không thuộc toà nào thì không có tiêu đề nhóm
+  const bname = c => c.info?.building_name || `Toà ${c.building}`;
+  const group = c => c.building ? (s.company ? bname(c) : `${c.info?.company_name || c.company || "–"} · ${bname(c)}`) : "";
+  if (grid.dataset.ids !== ids) {
+    grid.dataset.ids = ids;
+    grid.innerHTML = s.cameras.map((c, i) => {
+      const g = group(c), head = g && (i === 0 || group(s.cameras[i - 1]) !== g);
+      const n = s.cameras.filter(x => group(x) === g).length;
+      return (head ? `<div class="group-head">${esc(g)}<span class="meta" data-group="${esc(g)}">${n} camera</span></div>` : "") + `
+      <div class="tile" data-cam="${esc(c.cam)}">
+        <div class="tile-head"><span class="name" title="${esc(c.cam)}"><span class="dot"></span>${esc(c.info?.camera_name || c.cam)}${c.info?.floor ? `<small>tầng ${esc(c.info.floor)}</small>` : ""}</span><span class="meta"></span></div>
+        <div class="tile-media"><canvas class="live"></canvas>${c.hls ? '<video muted playsinline></video><canvas class="ov"></canvas>' : ""}</div>
+        <div class="tile-foot"><span>Object <b class="n-obj">0</b></span><span>Người <b class="n-per">0</b></span>${c.hls ? '<span class="live-tag" style="margin-left:auto">▶ LIVE</span>' : ""}</div>
+      </div>`; }).join("");
+    grid.querySelectorAll(".tile").forEach(t => t.onclick = () => {
+      const cam = (lastState?.cameras || []).find(x => x.cam === t.dataset.cam);
+      // Camera có video: mở link riêng của camera (chia sẻ được); không có video thì phóng to khung vẽ
+      if (cam?.hls) { location.href = "cam/" + encodeURIComponent(cam.cam); return; }
+      zoomCam = t.dataset.cam;
+      openModal(`<canvas class="live" id="zoomCanvas"></canvas>`, "");
+      updateZoom();
+    });
+    observeTiles();
+  }
+  const tiles = grid.querySelectorAll(".tile");
+  grid.querySelectorAll("[data-group]").forEach(el => {
+    const cs = s.cameras.filter(x => group(x) === el.dataset.group);
+    el.textContent = `${cs.filter(x => x.online).length}/${cs.length} camera có hình`;
+  });
+  s.cameras.forEach((c, i) => {
+    const t = tiles[i];
+    t.classList.toggle("off", !c.online);
+    t.querySelector(".dot").className = "dot " + (c.online ? "ok" : "bad");
+    t.querySelector(".meta").textContent = camLine(c);
+    t.querySelector(".n-obj").textContent = c.num_obj;
+    t.querySelector(".n-per").textContent = c.persons;
+    drawLive(t.querySelector("canvas.live"), c, false);
+  });
+}
+
+function updateZoom() {
+  if (!zoomCam || !lastState) return;
+  const c = lastState.cameras.find(x => x.cam === zoomCam), cv = $("zoomCanvas");
+  if (!c || !cv) return;
+  drawLive(cv, c, true);
+  $("modalCap").textContent = [c.cam, camLine(c), `${c.num_obj} object, ${c.persons} người`, c.uri].filter(Boolean).join(" · ");
+}
+
+async function loadState() {
+  try {
+    const s = await (await fetch("api/state")).json();
+    lastState = s;
+    renderChips(s);
+    if (CAM) renderCamView(s);
+    else if (tab === "cams") renderGrid(s);
+    updateZoom();
+  } catch (e) {
+    $("banner").hidden = false; $("banner").textContent = "Mất kết nối tới server web.";
+  }
+}
+
+/* ---------- video live (HLS) + bbox đồng bộ theo thời gian ----------
+   MediaMTX gắn EXT-X-PROGRAM-DATE-TIME (giờ server lúc nhận gói) vào HLS, nên hls.playingDate cho biết
+   frame đang chiếu được quay lúc nào. Metadata có ts_ms = giờ server lúc frame vào DeepStream.
+   Chọn bản ghi metadata có ts gần playingDate nhất -> khung khớp hình dù HLS trễ vài giây. */
+const SYNC_OFFSET_MS = 0, SYNC_MAX_GAP_MS = 400;
+let player = null;
+
+/* Bbox qua WebSocket (api/ws): 1 kết nối cho mọi cam đang xem trên trang, server đẩy frame mới,
+   thay cho việc hỏi lại vài lần mỗi giây cho từng cam. Rớt thì tự nối lại sau 2 s.
+   Trả về { close() } để đóng hẳn. */
+function metaStream(cams, fps, onFrames) {
+  let ws = null, closed = false, timer = 0;
+  const open = () => {
+    if (closed || !lastState?.ws_token) { timer = setTimeout(open, 1000); return; }
+    const u = new URL(`api/ws?fps=${fps}&cams=${encodeURIComponent(cams.join(","))}&token=${encodeURIComponent(lastState.ws_token)}`, document.baseURI);
+    u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+    ws = new WebSocket(u);
+    ws.onmessage = e => { try { onFrames(JSON.parse(e.data)); } catch (err) {} };
+    ws.onclose = () => { if (!closed) timer = setTimeout(open, 2000); };
+  };
+  open();
+  return { close() { closed = true; clearTimeout(timer); ws?.close(); } };
+}
+function pushFrames(p, frames) {
+  p.buf.push(...frames);
+  const cut = frames[frames.length - 1].ts - 20000;
+  while (p.buf.length && p.buf[0].ts < cut) p.buf.shift();
+}
+
+function startPlayer(cam, container) {
+  const html = `<video id="plVideo" muted autoplay playsinline></video>
+    <canvas id="plCanvas"></canvas><div class="pl-status" id="plStatus"><span class="live">● LIVE</span>đang kết nối…</div>`;
+  if (container) container.innerHTML = html;          // trang 1 camera: phát ngay trong trang
+  else openModal(`<div class="player">${html}</div>`, [cam.cam, cam.uri].filter(Boolean).join(" · "));
+  const video = $("plVideo");
+  const hls = new Hls({ lowLatencyMode: true, backBufferLength: 10 });
+  player = { cam: cam.cam, hls, video, canvas: $("plCanvas"), status: $("plStatus"), buf: [], raf: 0, es: null };
+  hls.loadSource(cam.hls);
+  hls.attachMedia(video);
+  hls.on(Hls.Events.ERROR, (_, d) => {
+    if (!d.fatal) return;
+    $("plStatus").textContent = "Lỗi luồng video, đang thử lại…";
+    if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError(); else setTimeout(() => player?.hls === hls && hls.startLoad(), 2000);
+  });
+  const p = player;
+  p.es = metaStream([p.cam], 30, d => d[p.cam] && pushFrames(p, d[p.cam]));
+  const loop = () => { drawOverlay(p); p.raf = requestAnimationFrame(loop); };
+  p.raf = requestAnimationFrame(loop);
+}
+
+function stopPlayer() {
+  if (!player) return;
+  cancelAnimationFrame(player.raf); player.es.close(); player.hls.destroy(); player = null;
+}
+
+/* ---------- trang 1 camera ---------- */
+let camViewStarted = false;
+function renderCamView(s) {
+  const c = s.cameras.find(x => x.cam === CAM), i = c?.info || {};
+  if (!camViewStarted) {
+    camViewStarted = true;
+    ["nav"].forEach(id => $(id).hidden = true);
+    ["cams", "events", "faces", "master"].forEach(t => $("tab-" + t).hidden = true);
+    $("tab-camview").hidden = false; $("tab-alerts").hidden = false;
+    tab = "alerts";
+    if (c?.hls && window.Hls && Hls.isSupported()) startPlayer(c, $("cvPlayer"));
+    else $("cvPlayer").innerHTML = `<div class="pl-status">${c ? "Camera này không có video live" : "Chưa có dữ liệu camera"}</div>`;
+  }
+  const rows = [
+    ["Camera ID", CAM], ["Tên camera", i.camera_name], ["Công ty", i.company_name], ["Toà", i.building_name],
+    ["Địa chỉ", i.building_address], ["Tầng", i.floor], ["Khu vực", i.zone],
+    ["FPS xử lý", i.fps_limit ? `${i.fps_limit} (giới hạn)` : "mọi frame"],
+    ["Trạng thái", c ? (c.online ? `<span class="dot ok"></span>có hình · ${c.fps} fps` : `<span class="dot bad"></span>${esc(camLine(c))}`) : "–"],
+    ["Frame mới nhất", c?.ts ? fmtDate(c.ts) : "–"],
+    ["Đang thấy", c ? `${c.num_obj} object, ${c.persons} người` : "–"],
+  ];
+  const html = `<h2>${esc(i.camera_name || CAM)}</h2><dl>${rows.map(([k, v]) =>
+    `<dt>${k}</dt><dd>${k === "Trạng thái" ? v : esc(v || "–")}</dd>`).join("")}</dl>
+    <p class="hint" style="margin:12px 0 0">Link riêng: <button class="btn sm" id="cvCopy">copy link</button></p>`;
+  const box = $("cvInfo");
+  if (box.dataset.html !== html) {
+    box.dataset.html = html; box.innerHTML = html;
+    $("cvCopy").onclick = e => { navigator.clipboard?.writeText(location.href); e.target.textContent = "đã copy"; };
+  }
+}
+
+/* Vùng ghế: đa giác toạ độ 0..1 theo khung hình, vẽ trong vùng hình thật (ox, oy, vw, vh) */
+function drawRoi(ctx, roi, ox, oy, vw, vh, edit) {
+  if (!roi.length) return;
+  ctx.save(); ctx.beginPath();
+  roi.forEach(([x, y], i) => i ? ctx.lineTo(ox + x * vw, oy + y * vh) : ctx.moveTo(ox + x * vw, oy + y * vh));
+  if (!edit || roi.length > 2) ctx.closePath();
+  ctx.fillStyle = "rgba(242,179,61,.15)"; if (roi.length > 2) ctx.fill();
+  ctx.setLineDash([6, 4]); ctx.strokeStyle = css("--warn"); ctx.lineWidth = 2; ctx.stroke();
+  if (edit) { ctx.setLineDash([]); ctx.fillStyle = css("--warn"); roi.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(ox + x * vw, oy + y * vh, 4, 0, 7); ctx.fill(); }); }
+  ctx.restore();
+}
+
+/* Vẽ vùng ghế cho 1 camera trên form master: video live (HLS) của camera + bấm để thêm đỉnh */
+function roiEdit(cam) {
+  const live = (lastState?.cameras || []).find(c => c.cam === cam.id);
+  if (!live?.hls) { alert("Camera chưa có video live (camera mới: bấm Lưu & áp dụng trước, rồi vẽ vùng)."); return; }
+  let pts = (cam.roi || []).map(p => [...p]);
+  openModal(`<div class="player" id="roiBox" style="cursor:crosshair"><video id="roiVideo" muted autoplay playsinline></video><canvas id="roiCanvas" style="pointer-events:auto"></canvas></div>
+    <div class="actions"><button class="btn primary" id="roiOk">Dùng vùng này</button><button class="btn" id="roiUndo">Bỏ điểm cuối</button>
+    <button class="btn danger" id="roiClear">Xoá vùng (cả khung hình)</button></div>`,
+    `${cam.id}: bấm lên hình để thêm đỉnh (≥ 3 điểm) quanh ghế / khu chờ. Người được tính ở yên khi chân (giữa cạnh dưới khung) nằm trong vùng. Xong bấm "Dùng vùng này" rồi "Lưu & áp dụng".`);
+  const video = $("roiVideo"), canvas = $("roiCanvas"), hls = new Hls({ lowLatencyMode: true });
+  hls.loadSource(live.hls); hls.attachMedia(video);
+  const geo = () => {
+    const cw = canvas.clientWidth, ch = canvas.clientHeight, s = Math.min(cw / (video.videoWidth || 16), ch / (video.videoHeight || 9));
+    const vw = (video.videoWidth || 16) * s, vh = (video.videoHeight || 9) * s;
+    return { cw, ch, vw, vh, ox: (cw - vw) / 2, oy: (ch - vh) / 2 };
+  };
+  let raf = 0;
+  const draw = () => {
+    const g = geo(), dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== Math.round(g.cw * dpr)) { canvas.width = Math.round(g.cw * dpr); canvas.height = Math.round(g.ch * dpr); }
+    const ctx = canvas.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, g.cw, g.ch);
+    drawRoi(ctx, pts, g.ox, g.oy, g.vw, g.vh, true);
+    raf = requestAnimationFrame(draw);
+  };
+  draw();
+  canvas.onclick = e => {
+    const g = geo(), r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left - g.ox) / g.vw, y = (e.clientY - r.top - g.oy) / g.vh;
+    if (x >= 0 && x <= 1 && y >= 0 && y <= 1 && pts.length < 32) pts.push([+x.toFixed(4), +y.toFixed(4)]);
+  };
+  modalCleanup = () => { cancelAnimationFrame(raf); hls.destroy(); };
+  const close = closeModal;
+  $("roiUndo").onclick = () => pts.pop();
+  $("roiClear").onclick = () => { delete cam.roi; setDirty(true); close(); renderForm(); };
+  $("roiOk").onclick = () => {
+    if (pts.length < 3) { alert("Cần ít nhất 3 điểm"); return; }
+    cam.roi = pts; setDirty(true); close(); renderForm();
+  };
+}
+
+function nearestFrame(buf, t) {
+  let lo = 0, hi = buf.length - 1;
+  if (hi < 0) return null;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (buf[mid].ts < t) lo = mid + 1; else hi = mid; }
+  const a = buf[lo], b = buf[lo - 1];
+  return b && Math.abs(b.ts - t) < Math.abs(a.ts - t) ? b : a;
+}
+
+function drawOverlay(p) {
+  const { video, canvas, hls } = p;
+  const dpr = window.devicePixelRatio || 1, cw = canvas.clientWidth, ch = canvas.clientHeight;
+  if (canvas.width !== Math.round(cw * dpr)) { canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr); }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cw, ch);
+  const status = p.status;
+  const date = hls.playingDate;
+  if (!video.videoWidth || !date || video.readyState < 2) return;
+  const f = nearestFrame(p.buf, date.getTime() + SYNC_OFFSET_MS);
+  const gap = f ? Math.abs(f.ts - date.getTime() - SYNC_OFFSET_MS) : Infinity;
+  const lat = hls.latency ? `trễ ~${hls.latency.toFixed(1)}s` : "";
+  const clock = date.toLocaleTimeString("vi-VN", { timeZone: TZ, hour12: false });
+  if (gap > SYNC_MAX_GAP_MS) {
+    if (status) status.innerHTML = `<span class="live">● LIVE</span>${clock} · ${lat} · chưa có metadata khớp (app DeepStream có chạy không?)`;
+    return;
+  }
+  // video object-fit: contain -> tính vùng hình thật; bbox theo khung 1920x1080 của streammux
+  const s = Math.min(cw / video.videoWidth, ch / video.videoHeight);
+  const vw = video.videoWidth * s, vh = video.videoHeight * s, ox = (cw - vw) / 2, oy = (ch - vh) / 2;
+  const sx = vw / 1920, sy = vh / 1080;
+  const dwelling = new Set((lastAlerts || []).filter(a => a.cam === p.cam && !a.end_ms).flatMap(a => a.tids || [a.tid]));
+  const roi = (lastState?.cameras || []).find(c => c.cam === p.cam)?.info?.roi;
+  if (roi) drawRoi(ctx, roi, ox, oy, vw, vh, false);
+  const fs = p.small ? 10 : 12;
+  ctx.font = `600 ${fs}px system-ui`; ctx.lineWidth = 2;
+  let persons = 0;
+  for (const o of f.objs) {
+    const [l, t, w, h] = o.bbox, face = !!o.gie, person = o.label === "person" && !face;
+    const alert = person && dwelling.has(o.tid), vip = o.tier === "vip";
+    if (person) persons++;
+    const col = alert ? css("--bad") : face ? css("--face") : vip ? css("--vip") : person ? css("--ok") : css("--vehicle");
+    const x = ox + l * sx, y = oy + t * sy;
+    ctx.strokeStyle = col; ctx.lineWidth = (alert || vip ? 3 : person ? 2 : 1.2) * (p.small || face ? 0.75 : 1);
+    ctx.strokeRect(x, y, w * sx, h * sy);
+    if (person && (!p.small || alert || o.name || vip)) {
+      // Người đã nhận ra mặt: tên thay cho tracking ID; VIP (hồ sơ hoặc classifier) có ★
+      const label = (alert ? "Ở YÊN " : "") + (o.name || (o.tid >= 0 ? "#" + o.tid : "")) + (vip ? " ★VIP" : "");
+      const tw = ctx.measureText(label).width + 8, lh = fs + 4;
+      ctx.fillStyle = col; ctx.fillRect(x, Math.max(0, y - lh), tw, lh);
+      ctx.fillStyle = "#000"; ctx.fillText(label, x + 4, Math.max(fs, y - 4));
+    }
+  }
+  if (status) status.innerHTML = `<span class="live">● LIVE</span>${clock} · ${lat} · ${f.objs.length} object, ${persons} người`;
+}
+
+/* ---------- video live trong từng ô camera ----------
+   Chỉ phát ô đang thấy trên màn hình (tối đa TILE_VIDEO_MAX), dừng khi đổi tab / ẩn trình duyệt.
+   Bbox của mọi ô đi chung 1 WebSocket (api/ws, giãn còn 10 frame/giây), khớp hình theo hls.playingDate. */
+const TILE_VIDEO_MAX = 16;
+const tilePlayers = new Map();     // cam -> { hls, video, canvas, buf, since }
+let tileVideo = true;
+try { tileVideo = localStorage.getItem("tileVideo") !== "0"; } catch (e) {}
+const tileObs = new IntersectionObserver(entries => {
+  for (const e of entries) e.isIntersecting ? startTile(e.target) : stopTile(e.target.dataset.cam);
+}, { rootMargin: "100px" });
+
+function startTile(el) {
+  const cam = el.dataset.cam;
+  if (!tileVideo || document.hidden || tab !== "cams" || tilePlayers.has(cam) || tilePlayers.size >= TILE_VIDEO_MAX) return;
+  const c = (lastState?.cameras || []).find(x => x.cam === cam), video = el.querySelector("video");
+  if (!c?.hls || !video || !window.Hls || !Hls.isSupported()) return;
+  const hls = new Hls({ lowLatencyMode: true, backBufferLength: 5, maxBufferLength: 8 });
+  hls.loadSource(c.hls);
+  hls.attachMedia(video);
+  video.play().catch(() => {});
+  hls.on(Hls.Events.ERROR, (_, d) => {
+    if (!d.fatal) return;
+    if (d.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+    else setTimeout(() => tilePlayers.get(cam)?.hls === hls && hls.startLoad(), 3000);
+  });
+  tilePlayers.set(cam, { cam, hls, video, canvas: el.querySelector("canvas.ov"), status: null, small: true, buf: [] });
+  syncTileStream();
+}
+
+function stopTile(cam) {
+  const p = tilePlayers.get(cam);
+  if (!p) return;
+  p.hls.destroy();
+  p.video.removeAttribute("src"); p.video.load();          // về trong suốt: lộ lại khung vẽ từ metadata
+  p.canvas.getContext("2d").clearRect(0, 0, p.canvas.width, p.canvas.height);
+  tilePlayers.delete(cam);
+  syncTileStream();
+}
+
+function stopAllTiles() { [...tilePlayers.keys()].forEach(stopTile); }
+
+function observeTiles() {
+  tileObs.disconnect();
+  stopAllTiles();
+  if (tileVideo && tab === "cams") $("grid").querySelectorAll(".tile").forEach(t => tileObs.observe(t));
+}
+
+function renderTileVideoBtn() {
+  $("tileVideoBtn").textContent = tileVideo ? "Video trong ô: BẬT" : "Video trong ô: TẮT (chỉ khung)";
+}
+$("tileVideoBtn").onclick = () => {
+  tileVideo = !tileVideo;
+  try { localStorage.setItem("tileVideo", tileVideo ? "1" : "0"); } catch (e) {}
+  renderTileVideoBtn(); observeTiles();
+};
+renderTileVideoBtn();
+document.addEventListener("visibilitychange", () => document.hidden ? stopAllTiles() : observeTiles());
+
+// Đổi tập ô đang phát (cuộn, đổi tab) thì mở lại 1 WebSocket cho đúng các cam đó (gom 300 ms)
+let tileES = null, tileESKey = "", tileESTimer = 0;
+function syncTileStream() {
+  clearTimeout(tileESTimer);
+  tileESTimer = setTimeout(() => {
+    const key = [...tilePlayers.keys()].sort().join(",");
+    if (key === tileESKey) return;
+    tileESKey = key; tileES?.close(); tileES = null;
+    if (key) tileES = metaStream(key.split(","), 10, d => {
+      for (const [cam, fr] of Object.entries(d)) { const p = tilePlayers.get(cam); if (p) pushFrames(p, fr); }
+    });
+  }, 300);
+}
+
+(function tileLoop() {
+  for (const p of tilePlayers.values()) drawOverlay(p);
+  requestAnimationFrame(tileLoop);
+})();
+
+/* ---------- cảnh báo ---------- */
+const REASON = { moved: "đã di chuyển", lost: "rời khỏi khung / mất track", shutdown: "app dừng" };
+const CLIP_STATE = {
+  bbox: ["ok", "Clip có khung sẵn sàng"], raw: ["warn", "Đang vẽ khung…"],
+  pending: ["warn", "Đang ghi clip…"], none: ["", "Không ghi clip (tắt smart record)"],
+};
+let alertsSig = "", lastAlerts = [];
+
+function renderAlerts(list) {
+  lastAlerts = list;
+  const badge = $("alertBadge");
+  badge.hidden = !list.length; badge.textContent = list.length;
+  const sig = JSON.stringify(list);
+  if (sig === alertsSig) return;          // không vẽ lại nếu không đổi (tránh dừng video / nháy ảnh)
+  alertsSig = sig;
+  const box = $("alerts");
+  if (!list.length) { box.innerHTML = `<div class="empty">Chưa có cảnh báo nào. Test nhanh: <code>./scripts/rtsp_sim.sh start 4 dwell_sitting_180s.mp4</code> rồi <code>./scripts/run_w1.sh 4 -t 120 -r 135</code></div>`; return; }
+  box.innerHTML = list.map((a, i) => {
+    const [l, t, w, h] = a.bbox || [0, 0, 0, 0];
+    const boxStyle = `left:${l / 19.2}%;top:${t / 10.8}%;width:${w / 19.2}%;height:${h / 10.8}%`;
+    const [cls, txt] = CLIP_STATE[a.clip_state];
+    const status = a.end_ms
+      ? `<span class="tag">Đã kết thúc · ${esc(REASON[a.end_reason] || a.end_reason)}</span>`
+      : `<span class="tag bad">Đang ở yên</span>`;
+    return `
+    <article class="alert ${a.end_ms ? "ended" : ""}">
+      <div class="snap">
+        ${a.snapshot ? `<img src="${a.snapshot}" loading="lazy" data-zoom="${a.snapshot}" alt="Toàn khung ${esc(a.cam)}"><div class="box" style="${boxStyle}"></div>`
+                     : `<div class="noimg">Không có ảnh</div>`}
+      </div>
+      <div class="alert-body">
+        <div class="crop">${a.crop ? `<img src="${a.crop}" loading="lazy" data-zoom="${a.crop}" alt="Ảnh người #${a.tid}">` : ""}</div>
+        <div class="info">
+          <h3>${esc(a.cam)} · người #${esc(a.tid)} ${status}</h3>
+          <dl class="kv">
+            <dt>Bắt đầu ở yên</dt><dd>${fmtDate(a.start_ms)}</dd>
+            <dt>Cảnh báo lúc</dt><dd>${fmtTime(a.alert_ms)} <span class="tag bad">${a.dwell_s}s</span></dd>
+            <dt>Kết thúc</dt><dd>${a.end_ms ? `${fmtTime(a.end_ms)} · tổng ${a.total_s}s` : "–"}</dd>
+            <dt>Clip</dt><dd><span class="tag ${cls}">${txt}</span>${a.clip_s ? ` ${a.clip_s}s` : ""}</dd>
+          </dl>
+          <div class="actions">
+            <button class="btn primary" data-video="${a.clip_bbox || ""}" data-cap="${esc(a.cam)} #${a.tid} · có khung"${a.clip_bbox ? "" : " disabled"}>▶ Clip có khung</button>
+            <button class="btn" data-video="${a.clip || ""}" data-cap="${esc(a.cam)} #${a.tid} · clip gốc"${a.clip ? "" : " disabled"}>Clip gốc</button>
+          </div>
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+  box.querySelectorAll("[data-video]").forEach(b => b.onclick = () =>
+    openModal(`<video src="${b.dataset.video}" controls autoplay></video>`, b.dataset.cap));
+  box.querySelectorAll("[data-zoom]").forEach(img => img.onclick = () =>
+    openModal(`<img src="${img.dataset.zoom}">`, img.alt));
+}
+
+async function loadAlerts() {
+  try {
+    const list = (await (await fetch("api/alerts")).json()).alerts;
+    renderAlerts(CAM ? list.filter(a => a.cam === CAM) : list);
+  } catch (e) {}
+}
+
+/* ---------- sự kiện ---------- */
+const EV_CLASS = { dwell_alert: "bad", dwell_resume: "warn", dwell_end: "", clip_ready: "ok", clip_annotated: "ok", camera_online: "ok", camera_offline: "warn",
+  face_recognized: "ok", vip_detected: "vip", system_heal: "warn" };
+function evDetail(e) {
+  const d = e.data;
+  switch (e.type) {
+    case "dwell_alert": return `người #${d.tid} ở yên ${d.dwell_s}s từ ${fmtTime(d.start_ms)}`;
+    case "dwell_resume": return `người #${d.tid} hiện lại sau ${d.gap_s}s bị che (track #${d.prev_track_tid} → #${d.track_tid}), vẫn tính ở yên từ ${fmtTime(d.start_ms)}`;
+    case "dwell_end": return `người #${d.tid} tổng ${d.dwell_s}s · ${REASON[d.reason] || d.reason}`;
+    case "clip_ready": return `${(d.file || "").split("/").pop()} (${((d.duration_ms || 0) / 1000).toFixed(1)}s)`;
+    case "clip_annotated": return (d.file || "").split("/").pop();
+    case "camera_online": return `có hình lại${d.silent_s ? ` sau ${d.silent_s}s` : ""}${d.uri ? " · " + d.uri : ""}`;
+    case "camera_offline": return `không có hình ${d.silent_s}s${d.uri ? " · " + d.uri : ""}`;
+    case "face_recognized": return `người #${d.tid} = ${d.name} (${d.tier === "vip" ? "★ VIP" : "khách thường"}, cosine ${d.score})`;
+    case "vip_detected": return `người #${d.tid} được classifier xếp VIP (${d.prob}), chưa đăng ký khuôn mặt`;
+    case "system_heal": return `tự hồi phục: ${d.detail}`;
+    default: return JSON.stringify(d);
+  }
+}
+async function loadEvents() {
+  try {
+    const all = (await (await fetch("api/events?limit=500")).json()).events;
+    const type = $("evType").value, list = type ? all.filter(e => e.type === type) : all;
+    $("evCount").textContent = `${list.length} sự kiện gần nhất`;
+    $("evBody").innerHTML = list.map(e => `<tr>
+      <td>${fmtDate(e.ts)}</td><td>${esc(e.cam)}</td>
+      <td><span class="tag ${EV_CLASS[e.type] || ""}">${esc(e.type)}</span></td>
+      <td class="detail">${esc(evDetail(e))}</td></tr>`).join("")
+      || `<tr><td colspan="4" class="detail">Chưa có sự kiện.</td></tr>`;
+  } catch (e) {}
+}
+$("evType").onchange = loadEvents;
+
+
+/* ---------- khuôn mặt: đăng ký, mặt lạ từ camera, nhật ký + thông báo ----------
+   API: api/faces (GET/POST), api/faces/<id> (PATCH/DELETE), api/faces/unknown, api/faces/hits?since=<ms> */
+const TIER = { vip: `<span class="tag vip">★ VIP</span>`, normal: `<span class="tag">Thường</span>` };
+let faceShots = [], faceSel = new Set(), faceData = null, faceHits = [], faceSince = 0, faceSeen = 0, faceCam = null;
+const pageStart = Date.now();
+const fMsg = (t, ok) => { $("fMsg").textContent = t || ""; $("fMsg").className = "f-msg " + (ok ? "ok" : "err"); };
+const fCo = () => faceData?.companies?.length ? $("fCo").value : undefined;
+
+// Ảnh to (điện thoại 12 MP) thu về tối đa 1280 px JPEG trước khi gửi: nhẹ, đủ cho mặt >= 40 px
+function shrink(src, w, h, mirror) {
+  const k = Math.min(1, 1280 / Math.max(w, h)), c = document.createElement("canvas"), ctx = c.getContext("2d");
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  // Ảnh webcam lật ngang như khung xem trước (ArcFace train có lật ngang nên vector gần như không đổi)
+  if (mirror) { ctx.translate(c.width, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(src, 0, 0, c.width, c.height);
+  return c.toDataURL("image/jpeg", 0.9);
+}
+function renderShots() {
+  $("fShots").innerHTML = faceShots.map((u, i) => `<div class="x"><img src="${u}"><button class="btn sm" data-i="${i}">✕</button></div>`).join("");
+  $("fShots").querySelectorAll("button").forEach(b => b.onclick = () => { faceShots.splice(+b.dataset.i, 1); renderShots(); });
+}
+$("fFiles").onchange = async e => {
+  for (const file of [...e.target.files].slice(0, 6 - faceShots.length)) {
+    try { const bmp = await createImageBitmap(file); faceShots.push(shrink(bmp, bmp.width, bmp.height)); } catch (err) { fMsg(`${file.name}: không đọc được ảnh`); }
+  }
+  e.target.value = ""; renderShots();
+};
+$("fCamBtn").onclick = async () => {
+  // Trình duyệt chỉ cho dùng webcam trên https hoặc localhost: http://<IP> thì mediaDevices không tồn tại
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
+    return fMsg(`Trình duyệt chặn webcam vì trang đang mở qua ${location.origin} (không phải https). Mở dashboard bằng link https ` +
+      `(./scripts/web.sh links) hoặc http://localhost:8095 (VS Code: tab PORTS → Forward 8095), hoặc dùng "Chọn ảnh…" (điện thoại chụp trực tiếp được).`);
+  try {
+    faceCam = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 1280 } });
+    $("fVideo").srcObject = faceCam; $("fCam").hidden = false;
+  } catch (e) { fMsg("Không mở được webcam (cần https hoặc localhost, và cho phép camera)"); }
+};
+const camOff = () => { faceCam?.getTracks().forEach(t => t.stop()); faceCam = null; $("fCam").hidden = true; };
+$("fCamOff").onclick = camOff;
+$("fSnap").onclick = () => {
+  const v = $("fVideo");
+  if (v.videoWidth && faceShots.length < 6) { faceShots.push(shrink(v, v.videoWidth, v.videoHeight, true)); renderShots(); }
+};
+$("fSave").onclick = async () => {
+  if (!faceShots.length) return fMsg("Chọn hoặc chụp ít nhất 1 ảnh");
+  $("fSave").disabled = true; fMsg("Đang tìm mặt và tính vector…", true);
+  try {
+    const d = await mApi("POST", "api/faces", { name: $("fName").value, tier: $("fTier").value, company: fCo(), images: faceShots });
+    fMsg(`Đã đăng ký ${d.person.name} (${d.samples_added} mẫu). Camera nhận ra sau ~3 giây.`, true);
+    faceShots = []; renderShots(); $("fName").value = ""; camOff(); loadFaces();
+  } catch (e) { fMsg(e.message); }
+  $("fSave").disabled = false;
+};
+
+async function faceFromUnknown(personId) {
+  const body = { unknown: [...faceSel], ...(personId ? { person_id: personId } : { name: $("fName").value, tier: $("fTier").value, company: fCo() }) };
+  try {
+    const d = await mApi("POST", "api/faces", body);
+    fMsg(`${personId ? "Đã thêm mẫu cho" : "Đã đăng ký"} ${d.person.name} từ ${d.samples_added} ảnh camera`, true);
+    faceSel.clear(); if (!personId) $("fName").value = ""; loadFaces();
+  } catch (e) { fMsg(e.message); }
+}
+$("fUnkNew").onclick = () => faceFromUnknown(null);
+$("fUnkAdd").onclick = () => $("fUnkTo").value && faceFromUnknown($("fUnkTo").value);
+const syncSel = () => { $("fUnkNew").disabled = $("fUnkAdd").disabled = !faceSel.size; };
+
+async function loadFaces() {
+  try {
+    const [d, u] = await Promise.all([mApi("GET", "api/faces"), mApi("GET", "api/faces/unknown")]);
+    faceData = d;
+    const coBox = $("fCo"), cos = ["", ...d.companies];
+    $("fCoWrap").hidden = !d.companies.length;
+    if (coBox.options.length !== cos.length) coBox.innerHTML = cos.map(c => `<option value="${esc(c)}">${c ? esc(c) : "Mọi công ty"}</option>`).join("");
+    $("fCount").textContent = `${d.people.length} người · ${d.people.filter(p => p.tier === "vip").length} VIP`;
+    if (!d.models) fMsg("Web chưa có model khuôn mặt: chỉ đăng ký được từ ảnh camera (mặt lạ bên phải). Xem ./scripts/prepare_models.sh");
+    $("fPeople").innerHTML = d.people.map(p => `<tr>
+      <td>${p.thumb ? `<img class="f-thumb" src="${p.thumb}" alt="">` : ""}</td><td><b>${esc(p.name)}</b></td><td>${TIER[p.tier]}</td>
+      <td>${esc(p.company || "Mọi công ty")}</td><td>${p.n}</td><td>${fmtDate(p.created_ms)}</td>
+      <td><div class="actions" style="margin:0"><button class="btn sm" data-tier="${p.id}">${p.tier === "vip" ? "Bỏ VIP" : "Lên VIP"}</button>
+        <button class="btn sm" data-ren="${p.id}">Đổi tên</button><button class="btn sm danger" data-del="${p.id}">Xoá</button></div></td></tr>`).join("")
+      || `<tr><td colspan="7" class="detail">Chưa có ai. Đăng ký bằng ảnh bên trái, hoặc chọn mặt lạ camera vừa gặp.</td></tr>`;
+    const person = id => d.people.find(p => p.id === id);
+    $("fPeople").querySelectorAll("[data-tier]").forEach(b => b.onclick = async () => {
+      const p = person(b.dataset.tier);
+      try { await mApi("PATCH", "api/faces/" + p.id, { name: p.name, tier: p.tier === "vip" ? "normal" : "vip" }); loadFaces(); } catch (e) { fMsg(e.message); }
+    });
+    $("fPeople").querySelectorAll("[data-ren]").forEach(b => b.onclick = async () => {
+      const p = person(b.dataset.ren), name = prompt("Tên mới", p.name);
+      if (name) try { await mApi("PATCH", "api/faces/" + p.id, { name, tier: p.tier }); loadFaces(); } catch (e) { fMsg(e.message); }
+    });
+    $("fPeople").querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+      const p = person(b.dataset.del);
+      if (confirm(`Xoá ${p.name} và toàn bộ ${p.n} mẫu khuôn mặt?`)) try { await mApi("DELETE", "api/faces/" + p.id); loadFaces(); } catch (e) { fMsg(e.message); }
+    });
+    const to = $("fUnkTo"), keep = to.value;
+    to.innerHTML = `<option value="">— chọn người —</option>` + d.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+    to.value = keep;
+    const ids = new Set(u.unknown.map(x => x.id));
+    [...faceSel].forEach(id => ids.has(id) || faceSel.delete(id));
+    $("fUnk").innerHTML = u.unknown.map(x => `<figure data-id="${x.id}" class="${faceSel.has(x.id) ? "sel" : ""}" title="${esc(x.cam)} · người #${x.tid}">
+      <img src="${x.crop}" loading="lazy" alt=""><figcaption>${fmtTime(x.ts)} · ${esc(x.cam_name || x.cam)}</figcaption></figure>`).join("")
+      || `<div class="empty" style="grid-column:1/-1">Chưa có. App gửi lên mặt người chưa đăng ký khi mặt đủ to (≥ 64 px) và rõ.</div>`;
+    $("fUnk").querySelectorAll("figure").forEach(f => f.onclick = () => {
+      faceSel.has(f.dataset.id) ? faceSel.delete(f.dataset.id) : faceSel.add(f.dataset.id);
+      f.classList.toggle("sel"); syncSel();
+    });
+    syncSel(); renderHits();
+  } catch (e) { fMsg(e.message); }
+}
+
+function hitText(h) {
+  const who = h.type === "vip_detected" ? `Khách VIP (chưa đăng ký) #${h.tid}` : esc(h.name);
+  return { who, where: `${esc(h.cam_name || h.cam)} · ${fmtTime(h.ts)}`, vip: h.tier === "vip" };
+}
+function renderHits() {
+  $("fHitsNote").textContent = faceHits.length ? `${faceHits.length} lượt trong 24 giờ` : "";
+  $("fHits").innerHTML = faceHits.map(h => { const t = hitText(h); return `<div class="f-hit ${t.vip ? "vip" : ""}" data-snap="${h.snapshot || ""}">
+      ${h.crop ? `<img class="f-thumb" src="${h.crop}" alt="">` : ""}<div><b>${t.who}</b> ${t.vip ? TIER.vip : ""}<br><small class="hint">${esc(h.cam_name || h.cam)}${h.score ? ` · cosine ${h.score}` : ""}</small></div>
+      <span class="t">${fmtDate(h.ts)}</span></div>`; }).join("") || `<div class="hint">Chưa nhận ra ai trong 24 giờ qua.</div>`;
+  $("fHits").querySelectorAll("[data-snap]").forEach(el => el.onclick = () => el.dataset.snap && openModal(`<img src="${el.dataset.snap}">`, el.querySelector("b").textContent));
+}
+function toast(h) {
+  const t = hitText(h), el = document.createElement("div");
+  el.className = "toast" + (t.vip ? " vip" : "");
+  el.innerHTML = `${h.crop ? `<img class="f-thumb" src="${h.crop}" alt="">` : ""}<div><b>${t.vip ? "★ " : ""}${t.who}</b>${t.vip ? "Khách VIP vừa đến" : "Nhận diện khuôn mặt"}<br><small>${t.where}</small></div>`;
+  el.onclick = () => { el.remove(); h.snapshot && openModal(`<img src="${h.snapshot}">`, `${t.who} · ${h.cam_name || h.cam}`); };
+  $("toasts").prepend(el);
+  while ($("toasts").children.length > 4) $("toasts").lastChild.remove();
+  setTimeout(() => el.remove(), t.vip ? 15000 : 8000);
+}
+// Hỏi lượt nhận diện mới mỗi 2 s trên mọi trang; lượt mới hơn lúc mở trang -> thông báo góc phải
+async function pollHits() {
+  if (!lastState) return;
+  try {
+    const d = await mApi("GET", `api/faces/hits?since=${faceSince}`);
+    const fresh = d.hits.filter(h => h.ms > faceSince);
+    if (!fresh.length) return;
+    faceSince = Math.max(...fresh.map(h => h.ms));
+    faceHits = [...fresh, ...faceHits].filter(h => h.ms > Date.now() - 864e5).slice(0, 200);
+    const shown = fresh.filter(h => h.ms > pageStart && (!CAM || h.cam === CAM));
+    shown.slice(0, 4).reverse().forEach(toast);
+    if (tab !== "faces" && shown.length) { faceSeen += shown.length; $("faceBadge").hidden = false; $("faceBadge").textContent = faceSeen; }
+    if (tab === "faces") renderHits();
+  } catch (e) {}
+}
+setInterval(pollHits, 2000);
+setInterval(() => { if (tab === "faces") loadFaces(); }, 5000);
+
+/* ---------- dashboard master: cấu hình công ty / toà / camera ----------
+   Cấu hình: configs/sites.json. Công ty / toà có mã (id: dùng trong link, camera_id, Redis) và tên hiển thị. */
+let M = null, mDirty = false;
+const mShownPw = new Set();
+const mApi = async (method, url, body) => {
+  const r = await fetch(url, { method, headers: { "Content-Type": "application/json", "X-Master": "1" },
+                               body: body ? JSON.stringify(body) : undefined });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.detail || `Lỗi ${r.status}`);
+  return d;
+};
+const setDirty = v => { mDirty = v; $("mDirty").hidden = !v; mTotals(); };
+
+async function loadMaster(full) {
+  let d;
+  try { d = await mApi("GET", "api/master"); } catch (e) { $("mLog").textContent = e.message; return; }
+  // Đang sửa dở thì không ghi đè form; form chỉ vẽ lại khi cấu hình trên server khác cái đang hiện
+  const reform = full || !M || (!mDirty && JSON.stringify(d.companies) !== JSON.stringify(M.companies));
+  if (reform) {
+    M = { companies: d.companies, app: d.app, saved: new Set(d.companies.map(c => c.id)) };
+    $("mDwell").value = d.app.dwell_s; $("mSr").checked = d.app.smart_record !== false;
+    $("mFace").checked = !!d.app.face; $("mFaceThr").value = d.app.face_thr ?? 0.42; $("mHeal").checked = d.app.auto_heal !== false;
+  }
+  M.live = d.live || {};
+  M.videos = d.videos; M.accounts = d.accounts; M.status = d.status || {}; M.alive = d.agent_alive; M.pending = d.pending;
+  if (reform) { setDirty(false); renderForm(); }
+  renderStatus();
+}
+
+function mTotals() {
+  if (!M) return;
+  const n = M.companies.reduce((a, c) => a + c.buildings.reduce((x, b) => x + b.cameras.length, 0), 0);
+  $("mTotal").innerHTML = `Tổng <b>${n}</b> camera${n > 64 ? ' <span style="color:var(--bad)">(tối đa 64)</span>' : n > 40 ? ' <span style="color:var(--warn)">(&gt;40: 1 GPU có thể không giải mã kịp)</span>' : ""}`;
+}
+
+/* Phần không có ô nhập của 1 công ty: link, tài khoản, nút thao tác (vẽ lại mỗi lần poll) */
+function companyStatus(c) {
+  const acc = M.accounts[c.id], url = (M.status.links || {})[c.id], busy = M.status.state === "running" || M.pending;
+  const dis = busy ? " disabled" : "";
+  const pw = acc ? (mShownPw.has(c.id) ? esc(acc.pass) : "••••••") : "";
+  const info = acc ? `${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(url)}</a>` : "chưa có link public"}
+      · <span class="pw">${esc(acc.user)} / ${pw}</span>
+      <button class="btn sm" data-show>${mShownPw.has(c.id) ? "ẩn" : "hiện"}</button>${url ? ` <button class="btn sm" data-copy="${esc(url)}">copy link</button>` : ""}`
+    : "chưa có link (bấm Lưu &amp; áp dụng)";
+  const open = M.saved.has(c.id) ? `<a class="btn sm primary" href="c/${encodeURIComponent(c.id)}/">Vào dashboard →</a>` : "";
+  return `<span class="info">${info}</span>
+    <span class="actions">
+      ${open}
+      <button class="btn sm" data-addb>+ Toà</button>
+      ${acc ? `<button class="btn sm" data-co-act="reset_password" title="Mật khẩu mới, mật khẩu cũ hết dùng được"${dis}>Đổi mật khẩu</button>
+      <button class="btn sm" data-co-act="republish" title="Tạo link public mới, link cũ hết dùng được"${dis}>Link mới</button>
+      ${url ? `<button class="btn sm" data-co-act="unpublish"${dis}>Tắt link</button>` : ""}` : ""}
+      <button class="btn sm danger" data-delco>Xoá công ty</button>
+    </span>`;
+}
+
+function renderMaster() { renderForm(); renderStatus(); }
+
+const inp = (f, v, ph, w) => `<input type="text" value="${esc(v ?? "")}" data-f="${f}" placeholder="${ph}"${w ? ` style="width:${w}px"` : ""}>`;
+
+function camRow(cam, ki) {
+  return `<tr data-ki="${ki}">
+    <td>${inp("id", cam.id, "camera_id")}</td>
+    <td>${inp("name", cam.name, "Sảnh chính")}</td>
+    <td>${inp("floor", cam.floor, "1", 50)}</td>
+    <td>${inp("zone", cam.zone, "Khu chờ", 110)}</td>
+    <td><select data-f="video">${M.videos.map(v => `<option${v === cam.video ? " selected" : ""}>${esc(v)}</option>`).join("")}</select></td>
+    <td><input type="number" min="0" max="60" value="${cam.fps}" data-f="fps"></td>
+    <td><input type="number" min="0" max="86400" value="${cam.start}" data-f="start"></td>
+    <td class="st" data-live="${esc(cam.id)}"></td>
+    <td class="st" data-link="${esc(cam.id)}"></td>
+    <td><button class="btn sm" data-roi title="Vùng ghế / khu chờ: chỉ cảnh báo ở yên cho người đứng chân trong vùng">${cam.roi ? `Vùng ghế ✓ ${cam.roi.length} điểm` : "Vùng ghế"}</button></td>
+    <td><button class="btn sm danger" data-delcam title="Xoá camera">✕</button></td>
+  </tr>`;
+}
+
+function renderForm() {
+  $("mCompanies").innerHTML = M.companies.map((c, ci) => `<div class="m-co" data-ci="${ci}">
+      <div class="m-co-head">
+        <span class="lbl hint" style="margin:0">Mã</span><input type="text" class="co-name" value="${esc(c.id)}" data-f="co" placeholder="ma_cong_ty" style="width:120px">
+        ${inp("coname", c.name, "Tên công ty", 180)}
+        <span class="m-st" style="display:contents"></span>
+      </div>
+      ${c.buildings.map((b, bi) => `<div class="m-b" data-bi="${bi}">
+        <div class="m-b-head"><span class="lbl">Toà</span>
+          <input type="text" value="${esc(b.id)}" data-f="b" style="width:70px" placeholder="mã">
+          ${inp("bname", b.name, "Tên toà", 140)} ${inp("addr", b.address, "Địa chỉ", 260)}
+          <span class="lbl">${b.cameras.length} camera</span><span class="sp"></span>
+          <button class="btn sm" data-addcam>+ Camera</button>
+          <button class="btn sm danger" data-delb>Xoá toà</button></div>
+        <table class="m-cams">
+          <thead><tr><th>camera_id</th><th>Tên camera</th><th>Tầng</th><th>Khu vực</th><th>Video</th><th>FPS xử lý</th>
+            <th>Bắt đầu (giây)</th><th>Trạng thái (fps · frame mới nhất)</th><th>Link riêng</th><th>Vùng ghế</th><th></th></tr></thead>
+          <tbody>${b.cameras.map(camRow).join("")}</tbody>
+        </table>
+      </div>`).join("")}
+    </div>`).join("") || `<div class="empty">Chưa có công ty nào.</div>`;
+  mTotals();
+}
+
+/* Gợi ý camera mới: id tiếp theo trong toà, video kế tiếp, lệch giây bắt đầu nếu trùng video */
+function newCamera(co, b) {
+  const ids = new Set(M.companies.flatMap(c => c.buildings.flatMap(x => x.cameras.map(k => k.id))));
+  let i = b.cameras.length + 1;
+  while (ids.has(`${co}-${b.id}-cam${i}`)) i++;
+  const video = M.videos[b.cameras.length % Math.max(1, M.videos.length)] || "";
+  const same = b.cameras.filter(k => k.video === video).length;
+  return { id: `${co}-${b.id}-cam${i}`, name: `Camera ${i}`, floor: "", zone: "", video, fps: 0, start: same * 13 };
+}
+
+function renderStatus() {
+  const st = M.status, busy = st.state === "running" || M.pending, links = st.links || {};
+  // Trạng thái thật từng cam (từ ds:frames): fps nhận được + giờ của frame mới nhất
+  document.querySelectorAll("#mCompanies [data-live]").forEach(td => {
+    const l = M.live[td.dataset.live];
+    const html = !l ? "chưa có dữ liệu"
+      : `<span class="dot ${l.online ? "ok" : "bad"}"></span>${l.online ? `${l.fps} fps` : "mất hình"} · ${l.ts ? fmtDate(l.ts) : "–"}`;
+    if (td.innerHTML !== html) td.innerHTML = html;
+  });
+  // Link riêng từng camera: mở (qua admin) + copy link public (<link công ty>/cam/<id>)
+  document.querySelectorAll("#mCompanies [data-link]").forEach(td => {
+    const co = M.companies[td.closest("[data-ci]").dataset.ci], id = td.dataset.link;
+    const saved = M.saved.has(co.id) && M.live[id], pub = links[co.id];
+    const html = !saved ? "sau khi áp dụng"
+      : `<a class="btn sm" href="c/${encodeURIComponent(co.id)}/cam/${encodeURIComponent(id)}">Mở</a>${pub
+        ? ` <button class="btn sm" data-copy="${esc(pub)}/cam/${encodeURIComponent(id)}">copy link</button>` : ""}`;
+    if (td.innerHTML !== html) td.innerHTML = html;
+  });
+  document.querySelectorAll("#mCompanies [data-ci]").forEach(el => {
+    const html = companyStatus(M.companies[el.dataset.ci]), box = el.querySelector(".m-st");
+    if (box.dataset.html !== html) { box.dataset.html = html; box.innerHTML = html; }
+  });
+  renderSys(busy);
+  $("mApply").disabled = busy;
+  document.querySelectorAll("#tab-master [data-act]").forEach(b => b.disabled = busy);
+  const when = t => t ? fmtTime(t * 1000) : "";
+  $("mAgent").innerHTML = !M.alive ? `<span class="tag bad">agent không chạy</span> trên host: ./scripts/master.sh start`
+    : busy ? `<span class="tag warn">đang chạy</span> ${esc(st.action || "")} ${esc(st.company || "")} từ ${when(st.started)}`
+    : st.action ? `<span class="tag ${st.ok ? "ok" : "bad"}">${st.ok ? "xong" : "lỗi"}</span> ${esc(st.action)} ${esc(st.company || "")} lúc ${when(st.finished)}`
+    : `<span class="tag ok">sẵn sàng</span>`;
+  $("mAgent").innerHTML += ` · app <b>${st.app_running ? "đang chạy" : "đang dừng"}</b>`;
+  const log = $("mLog"), atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 5;
+  const text = (st.log || []).join("\n") || "Chưa có thao tác nào.";
+  if (log.textContent !== text) { log.textContent = text; if (atEnd) log.scrollTop = log.scrollHeight; }
+  mTotals();
+}
+
+/* Thành phần hệ thống theo thứ tự bật (agent báo trạng thái mỗi 10 s, xem COMPONENTS trong master/agent.py) */
+const SYS_NAMES = { ds: "DeepStream", redis: "Redis", sim: "Camera giả lập", upload: "Upload ảnh/clip (S3)", app: "App w1", web: "Web + link công ty" };
+function renderSys(busy) {
+  const comps = M.status.components || [], dis = busy || !M.alive ? " disabled" : "";
+  const off = comps.filter(c => !c.ok).length;
+  const rows = comps.map((c, i) => `<div class="m-sys-row">
+      <span class="nm"><span class="dot ${c.ok ? "ok" : "bad"}"></span>${i + 1}. ${esc(SYS_NAMES[c.key] || c.key)}</span>
+      <span class="dt">${esc(c.detail)}</span>
+      ${c.ok ? `<span class="tag ok">đang chạy</span>` : `<button class="btn sm" data-start="${esc(c.key)}"${dis}>Bật</button>`}
+    </div>`).join("");
+  const html = `<div class="m-sys-head"><b>Hệ thống</b>
+      <span class="hint" style="margin:0">bật theo thứ tự 1 → ${comps.length || 5}, bước sau cần bước trước</span>
+      <span class="sp"></span>
+      <button class="btn sm primary" data-start-all${dis}>Bật tất cả theo thứ tự${off ? ` (${off} đang tắt)` : ""}</button></div>
+    ${rows || `<div class="m-sys-row"><span class="dt">Chưa có trạng thái từ agent</span></div>`}
+    <div class="m-sys-row"><span class="nm"><span class="dot ${M.alive ? "ok" : "bad"}"></span>Web admin + Agent</span>
+      <span class="dt">ds_web, ds_agent: bật trên host bằng ./scripts/web.sh start rồi ./scripts/master.sh start
+        (trang này và các nút bấm cần 2 thành phần này)</span></div>`;
+  const box = $("mSys");
+  if (box.dataset.html !== html) { box.dataset.html = html; box.innerHTML = html; }
+}
+$("mSys").onclick = e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.hasAttribute("data-start-all")) mAction("start_all");
+  else if (b.dataset.start) mAction("start", undefined, b.dataset.start);
+};
+
+function mFind(el) {
+  const co = el.closest("[data-ci]"), bl = el.closest("[data-bi]"), row = el.closest("[data-ki]");
+  const c = co && M.companies[co.dataset.ci], b = c && bl && c.buildings[bl.dataset.bi];
+  return { co, c, b, cam: b && row && b.cameras[row.dataset.ki], row };
+}
+$("mCompanies").addEventListener("input", e => {
+  const { c, b, cam } = mFind(e.target), f = e.target.dataset.f, v = e.target.value;
+  if (!c) return;
+  if (f === "coname") c.name = v;
+  else if (f === "bname") b.name = v;
+  else if (f === "addr") b.address = v;
+  else if (["id", "name", "floor", "zone"].includes(f)) cam[f] = f === "id" ? v.trim() : v;
+  else if (f === "video") cam.video = v;
+  else if (f === "fps" || f === "start") cam[f] = parseInt(v, 10) || 0;
+  else if (f !== "co" && f !== "b") return;
+  setDirty(true);
+});
+// Đổi mã công ty / toà (khi rời ô): camera_id mặc định <công ty>-<toà>-camN đổi theo
+$("mCompanies").addEventListener("change", e => {
+  const { c, b } = mFind(e.target), f = e.target.dataset.f, v = e.target.value.trim();
+  if (f !== "co" && f !== "b") return;
+  const oldPre = f === "co" ? `${c.id}-` : `${c.id}-${b.id}-`;
+  if (f === "co") c.id = v; else b.id = v;
+  const newPre = f === "co" ? `${c.id}-` : `${c.id}-${b.id}-`;
+  for (const x of (f === "co" ? c.buildings : [b])) for (const k of x.cameras)
+    if (k.id.startsWith(oldPre)) k.id = newPre + k.id.slice(oldPre.length);
+  setDirty(true); renderMaster();
+});
+$("mCompanies").addEventListener("click", async e => {
+  const t = e.target; if (t.tagName !== "BUTTON") return;
+  const { co, c, b, row } = mFind(t); if (!c) return;
+  if (t.hasAttribute("data-show")) {
+    mShownPw.has(c.id) ? mShownPw.delete(c.id) : mShownPw.add(c.id); renderStatus(); return;
+  }
+  if (t.dataset.copy) { navigator.clipboard?.writeText(t.dataset.copy); t.textContent = "đã copy"; return; }
+  if (t.hasAttribute("data-addb")) {
+    const used = new Set(c.buildings.map(x => x.id));
+    let id = "A"; for (let i = 0; used.has(id); i++) id = String.fromCharCode(66 + i);
+    const nb = { id, name: `Toà ${id}`, address: "", cameras: [] };
+    nb.cameras.push(newCamera(c.id, nb));
+    c.buildings.push(nb);
+  } else if (t.hasAttribute("data-addcam")) {
+    b.cameras.push(newCamera(c.id, b));
+  } else if (t.hasAttribute("data-roi")) {
+    roiEdit(b.cameras[row.dataset.ki]); return;
+  } else if (t.hasAttribute("data-delcam")) {
+    b.cameras.splice(row.dataset.ki, 1);
+  } else if (t.hasAttribute("data-delb")) {
+    if (!confirm(`Xoá toà ${b.name || b.id} (${b.cameras.length} camera)?`)) return;
+    c.buildings.splice(t.closest("[data-bi]").dataset.bi, 1);
+  } else if (t.hasAttribute("data-delco")) {
+    if (!confirm(`Xoá công ty ${c.name || c.id}? Sau khi áp dụng, link public của công ty sẽ bị tắt.`)) return;
+    M.companies.splice(co.dataset.ci, 1);
+  } else if (t.dataset.coAct) {
+    const msg = { reset_password: `Đổi mật khẩu ${c.id}? Mật khẩu cũ sẽ hết dùng được.`,
+                  republish: `Tạo link mới cho ${c.id}? Link cũ (kể cả link riêng từng camera) sẽ hết dùng được.`,
+                  unpublish: `Tắt link public của ${c.id}?` }[t.dataset.coAct];
+    if (confirm(msg)) mAction(t.dataset.coAct, c.id);
+    return;
+  } else return;
+  setDirty(true); renderMaster();
+});
+$("mDwell").oninput = $("mSr").onchange = $("mFace").onchange = $("mFaceThr").oninput = $("mHeal").onchange = () => setDirty(true);
+$("mAddCo").onclick = () => {
+  const ids = new Set(M.companies.map(c => c.id));
+  let i = M.companies.length + 1; while (ids.has("cong_ty_" + i)) i++;
+  const c = { id: "cong_ty_" + i, name: "Công ty " + i, buildings: [{ id: "A", name: "Toà A", address: "", cameras: [] }] };
+  c.buildings[0].cameras.push(newCamera(c.id, c.buildings[0]));
+  M.companies.push(c);
+  setDirty(true); renderMaster();
+};
+document.querySelectorAll("#tab-master [data-act]").forEach(b => b.onclick = () => {
+  if (b.dataset.act === "app_stop" && !confirm("Dừng app? Mọi công ty sẽ không còn hình live và cảnh báo.")) return;
+  if (b.dataset.act === "clear_alerts" && !confirm("Xoá mọi cảnh báo, ảnh và clip cũ hơn 10 phút của TẤT CẢ công ty? Không lấy lại được.")) return;
+  mAction(b.dataset.act);
+});
+$("mApply").onclick = async () => {
+  try {
+    await mApi("PUT", "api/master/config", { companies: M.companies,
+      app: { dwell_s: parseInt($("mDwell").value, 10), smart_record: $("mSr").checked,
+             face: $("mFace").checked, face_thr: parseFloat($("mFaceThr").value), auto_heal: $("mHeal").checked } });
+    setDirty(false);
+    await mAction("apply");
+  } catch (e) { alert(e.message); }
+};
+async function mAction(action, company, target) {
+  try { await mApi("POST", "api/master/action", { action, company, target }); }
+  catch (e) { alert(e.message); }
+  loadMaster(false);
+}
+
+/* ---------- vòng lặp ---------- */
+loadState(); loadAlerts();
+setInterval(loadState, 1000);
+setInterval(() => { if (tab === "alerts" || tab === "cams") loadAlerts(); if (tab === "events") loadEvents(); }, 3000);
+setInterval(() => { if (tab === "master") loadMaster(false); }, 2000);
+window.addEventListener("resize", () => lastState && renderGrid(lastState));
+</script>
+</body>
+</html>

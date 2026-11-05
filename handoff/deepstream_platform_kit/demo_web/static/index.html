@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DeepStream Platform Demo</title>
+<style>
+:root {
+  --bg: #0f1216; --panel: #171b21; --panel-2: #1e232b; --line: #2a313b;
+  --text: #e6e9ee; --muted: #8b95a3; --accent: #4c9eff;
+  --ok: #2fbf71; --warn: #f2b33d; --bad: #f0524f; --vehicle: #7aa2c8;
+  --radius: 8px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+  padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+  font-size: 12px; color: var(--muted); white-space: nowrap; }
+.chip b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; background: var(--muted); }
+.dot.ok { background: var(--ok); } .dot.bad { background: var(--bad); } .dot.warn { background: var(--warn); }
+nav { display: flex; gap: 4px; padding: 0 20px; border-bottom: 1px solid var(--line); background: var(--panel); }
+nav button { background: none; border: 0; color: var(--muted); padding: 10px 14px; font: inherit; cursor: pointer;
+  border-bottom: 2px solid transparent; }
+nav button.active { color: var(--text); border-bottom-color: var(--accent); }
+nav .badge { background: var(--bad); color: #fff; border-radius: 999px; padding: 0 7px; font-size: 11px; margin-left: 6px; }
+main { padding: 16px 20px 40px; }
+.banner { background: #3a2a12; border: 1px solid #6b4a17; color: #f6d39a; padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px; }
+.hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.empty { color: var(--muted); padding: 40px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }
+
+/* Camera */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; cursor: pointer; }
+.tile:hover { border-color: var(--accent); }
+.tile.off { opacity: .6; }
+.tile-head { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; font-size: 13px; }
+.tile-head .name { font-weight: 600; }
+.tile-head .meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+canvas.live { display: block; width: 100%; aspect-ratio: 16 / 9; background: #0a0d10; }
+.tile-foot { display: flex; gap: 12px; padding: 6px 10px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tile-foot b { color: var(--text); }
+
+/* Alerts */
+.alerts { display: flex; flex-direction: column; gap: 12px; }
+.alert { display: grid; grid-template-columns: minmax(0, 360px) 1fr; gap: 16px; background: var(--panel);
+  border: 1px solid var(--line); border-left: 3px solid var(--bad); border-radius: var(--radius); padding: 12px; }
+.alert.ended { border-left-color: var(--muted); }
+.snap { position: relative; border-radius: 6px; overflow: hidden; background: #0a0d10; aspect-ratio: 16 / 9; }
+.snap img { width: 100%; height: 100%; object-fit: cover; display: block; cursor: zoom-in; }
+.snap .box { position: absolute; border: 2px solid var(--bad); box-shadow: 0 0 0 1px #0008; pointer-events: none; }
+.snap .noimg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
+.alert-body { display: flex; gap: 14px; min-width: 0; }
+.crop { width: 84px; flex: none; }
+.crop img { width: 84px; border-radius: 6px; display: block; cursor: zoom-in; background: #0a0d10; }
+.info { min-width: 0; flex: 1; }
+.info h3 { margin: 0 0 6px; font-size: 15px; }
+.kv { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; font-size: 13px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+.tag { display: inline-block; font-size: 11px; border-radius: 4px; padding: 1px 7px; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+.tag.bad { color: var(--bad); border-color: #6a2a29; } .tag.ok { color: var(--ok); border-color: #1f5a3b; } .tag.warn { color: var(--warn); border-color: #6b5217; }
+.actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px;
+  font: inherit; font-size: 13px; cursor: pointer; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn:disabled { opacity: .45; cursor: default; }
+
+/* Events */
+.toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+select { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font: inherit; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { background: var(--panel); color: var(--muted); font-weight: 500; position: sticky; top: 0; }
+td.detail { white-space: normal; color: var(--muted); min-width: 280px; }
+tbody tr:hover { background: var(--panel); }
+
+/* Modal */
+.modal { position: fixed; inset: 0; background: #000c; display: none; align-items: center; justify-content: center; z-index: 20; padding: 20px; }
+.modal.open { display: flex; }
+.modal-inner { position: relative; max-width: min(1280px, 100%); width: 100%; }
+.modal-inner video, .modal-inner img, .modal-inner canvas { width: 100%; max-height: 80vh; object-fit: contain; display: block; background: #000; border-radius: 6px; }
+.modal-cap { color: var(--muted); font-size: 13px; margin-top: 8px; }
+.modal-close { position: absolute; top: -36px; right: 0; }
+
+@media (max-width: 720px) {
+  header, nav, main { padding-left: 16px; padding-right: 16px; }
+  .alert { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>DeepStream · Platform demo</h1>
+  <div class="chips" id="chips"></div>
+</header>
+<nav>
+  <button data-tab="cams" class="active">Camera</button>
+  <button data-tab="alerts">Cảnh báo <span class="badge" id="alertBadge" hidden>0</span></button>
+  <button data-tab="events">Sự kiện</button>
+</nav>
+<main>
+  <div id="banner" class="banner" hidden></div>
+
+  <section id="tab-cams">
+    <p class="hint">Khung trực tiếp được vẽ lại từ metadata trong <code>ds:frames</code> (bbox + tracking ID), không phải hình camera.
+      <span style="color:var(--ok)">■</span> người · <span style="color:var(--vehicle)">■</span> phương tiện / khác. Bấm vào cam để phóng to.</p>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section id="tab-alerts" hidden>
+    <p class="hint">Mỗi thẻ là 1 lượt ở yên quá ngưỡng: ghép <code>dwell_alert</code> + <code>dwell_end</code> + <code>clip_ready</code> + <code>clip_annotated</code>.</p>
+    <div class="alerts" id="alerts"></div>
+  </section>
+
+  <section id="tab-events" hidden>
+    <div class="toolbar">
+      <label for="evType" class="hint" style="margin:0">Loại</label>
+      <select id="evType">
+        <option value="">Tất cả</option>
+        <option>dwell_alert</option><option>dwell_end</option><option>clip_ready</option>
+        <option>clip_annotated</option><option>camera_online</option><option>camera_offline</option>
+      </select>
+      <span class="hint" style="margin:0" id="evCount"></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Thời gian</th><th>Cam</th><th>Loại</th><th>Chi tiết</th></tr></thead>
+      <tbody id="evBody"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<div class="modal" id="modal">
+  <div class="modal-inner">
+    <button class="btn modal-close" id="modalClose">Đóng ✕</button>
+    <div id="modalBody"></div>
+    <div class="modal-cap" id="modalCap"></div>
+  </div>
+</div>
+
+<script>
+const TZ = "Asia/Ho_Chi_Minh";
+const fmtTime = ms => ms ? new Date(ms).toLocaleTimeString("vi-VN", { timeZone: TZ, hour12: false }) : "–";
+const fmtDate = ms => ms ? new Date(ms).toLocaleString("vi-VN", { timeZone: TZ, hour12: false }) : "–";
+const fmtNum = n => (n ?? 0).toLocaleString("vi-VN");
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = id => document.getElementById(id);
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+let tab = "cams", lastState = null, zoomCam = null;
+
+/* ---------- tabs ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  tab = b.dataset.tab;
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("active", x === b));
+  ["cams", "alerts", "events"].forEach(t => $("tab-" + t).hidden = t !== tab);
+  if (tab === "alerts") loadAlerts();
+  if (tab === "events") loadEvents();
+});
+
+/* ---------- modal ---------- */
+function openModal(html, cap) {
+  $("modalBody").innerHTML = html; $("modalCap").textContent = cap || ""; $("modal").classList.add("open");
+}
+function closeModal() {
+  $("modal").classList.remove("open"); $("modalBody").innerHTML = ""; zoomCam = null;
+}
+$("modalClose").onclick = closeModal;
+$("modal").onclick = e => { if (e.target.id === "modal") closeModal(); };
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+/* ---------- vẽ bbox từ metadata ---------- */
+function drawLive(canvas, cam, big) {
+  const dpr = window.devicePixelRatio || 1;
+  const cw = canvas.clientWidth, ch = canvas.clientHeight;
+  if (!cw) return;
+  if (canvas.width !== cw * dpr) { canvas.width = cw * dpr; canvas.height = ch * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#0a0d10"; ctx.fillRect(0, 0, cw, ch);
+  if (!cam.online) {
+    ctx.fillStyle = css("--muted"); ctx.font = "13px system-ui"; ctx.textAlign = "center";
+    ctx.fillText(cam.age_s == null ? "Chưa có dữ liệu" : "Mất hình", cw / 2, ch / 2);
+    return;
+  }
+  const sx = cw / cam.w, sy = ch / cam.h;
+  ctx.font = (big ? 13 : 10) + "px system-ui"; ctx.textAlign = "left";
+  for (const o of cam.objs) {
+    const [l, t, w, h] = o.bbox, person = o.label === "person";
+    const col = person ? css("--ok") : css("--vehicle");
+    ctx.strokeStyle = col; ctx.lineWidth = person ? 1.6 : 1;
+    ctx.strokeRect(l * sx, t * sy, w * sx, h * sy);
+    if (big || person) {
+      const label = (big ? o.label + " " : "") + (o.tid >= 0 ? "#" + o.tid : "");
+      if (label) { ctx.fillStyle = col; ctx.fillText(label, l * sx + 2, Math.max(10, t * sy - 3)); }
+    }
+  }
+}
+
+function camLine(c) {
+  return c.online ? `${c.fps} fps` : (c.age_s == null ? "chưa có dữ liệu" : `mất hình ${Math.round(c.age_s)}s`);
+}
+
+/* ---------- tổng quan ---------- */
+function renderChips(s) {
+  const redis = `<span class="dot ${s.redis ? "ok" : "bad"}"></span>Redis <b>${s.redis ? "UP" : "DOWN"}</b> ${esc(s.redis_addr)}`;
+  const camDot = s.cams_total && s.cams_online === s.cams_total ? "ok" : s.cams_online ? "warn" : "bad";
+  $("chips").innerHTML = [
+    redis,
+    `<span class="dot ${camDot}"></span>Cam có hình <b>${s.cams_online}/${s.cams_total}</b>`,
+    `Tổng <b>${fmtNum(s.fps_total)}</b> FPS`,
+    `ds:frames <b>${fmtNum(s.frames_len)}</b>`,
+    `ds:events <b>${fmtNum(s.events_len)}</b>`,
+  ].map(x => `<span class="chip">${x}</span>`).join("");
+
+  const banner = $("banner");
+  if (!s.redis) { banner.hidden = false; banner.textContent = `Không kết nối được Redis ${s.redis_addr}. Trên host chạy: ./scripts/redis_dev.sh start`; }
+  else if (s.cams_total && !s.cams_online) { banner.hidden = false; banner.textContent = "Không có frame mới: w1-app chưa chạy, hoặc chưa có luồng RTSP (./scripts/rtsp_sim.sh start …; ./scripts/run_w1.sh …). Tab Cảnh báo và Sự kiện vẫn xem được dữ liệu cũ."; }
+  else banner.hidden = true;
+}
+
+function renderGrid(s) {
+  const grid = $("grid");
+  if (!s.cameras.length) { grid.innerHTML = `<div class="empty">Chưa có camera nào trong Redis.</div>`; return; }
+  const ids = s.cameras.map(c => c.cam).join(",");
+  if (grid.dataset.ids !== ids) {
+    grid.dataset.ids = ids;
+    grid.innerHTML = s.cameras.map(c => `
+      <div class="tile" data-cam="${esc(c.cam)}">
+        <div class="tile-head"><span class="name"><span class="dot"></span>${esc(c.cam)}</span><span class="meta"></span></div>
+        <canvas class="live"></canvas>
+        <div class="tile-foot"><span>Object <b class="n-obj">0</b></span><span>Người <b class="n-per">0</b></span></div>
+      </div>`).join("");
+    grid.querySelectorAll(".tile").forEach(t => t.onclick = () => {
+      zoomCam = t.dataset.cam;
+      openModal(`<canvas class="live" id="zoomCanvas"></canvas>`, "");
+      updateZoom();
+    });
+  }
+  s.cameras.forEach((c, i) => {
+    const t = grid.children[i];
+    t.classList.toggle("off", !c.online);
+    t.querySelector(".dot").className = "dot " + (c.online ? "ok" : "bad");
+    t.querySelector(".meta").textContent = camLine(c);
+    t.querySelector(".n-obj").textContent = c.num_obj;
+    t.querySelector(".n-per").textContent = c.persons;
+    drawLive(t.querySelector("canvas"), c, false);
+  });
+}
+
+function updateZoom() {
+  if (!zoomCam || !lastState) return;
+  const c = lastState.cameras.find(x => x.cam === zoomCam), cv = $("zoomCanvas");
+  if (!c || !cv) return;
+  drawLive(cv, c, true);
+  $("modalCap").textContent = `${c.cam} · ${camLine(c)} · ${c.num_obj} object, ${c.persons} người · ${c.uri}`;
+}
+
+async function loadState() {
+  try {
+    const s = await (await fetch("/api/state")).json();
+    lastState = s;
+    renderChips(s);
+    if (tab === "cams") renderGrid(s);
+    updateZoom();
+  } catch (e) {
+    $("banner").hidden = false; $("banner").textContent = "Mất kết nối tới server web.";
+  }
+}
+
+/* ---------- cảnh báo ---------- */
+const REASON = { moved: "đã di chuyển", lost: "rời khỏi khung / mất track", shutdown: "app dừng" };
+const CLIP_STATE = {
+  bbox: ["ok", "Clip có khung sẵn sàng"], raw: ["warn", "Đang vẽ khung…"],
+  pending: ["warn", "Đang ghi clip…"], none: ["", "Không ghi clip (tắt smart record)"],
+};
+let alertsSig = "";
+
+function renderAlerts(list) {
+  const badge = $("alertBadge");
+  badge.hidden = !list.length; badge.textContent = list.length;
+  const sig = JSON.stringify(list);
+  if (sig === alertsSig) return;          // không vẽ lại nếu không đổi (tránh dừng video / nháy ảnh)
+  alertsSig = sig;
+  const box = $("alerts");
+  if (!list.length) { box.innerHTML = `<div class="empty">Chưa có cảnh báo nào. Test nhanh: <code>./scripts/rtsp_sim.sh start 4 dwell_sitting_180s.mp4</code> rồi <code>./scripts/run_w1.sh 4 -t 120 -r 135</code></div>`; return; }
+  box.innerHTML = list.map((a, i) => {
+    const [l, t, w, h] = a.bbox || [0, 0, 0, 0];
+    const boxStyle = `left:${l / 19.2}%;top:${t / 10.8}%;width:${w / 19.2}%;height:${h / 10.8}%`;
+    const [cls, txt] = CLIP_STATE[a.clip_state];
+    const status = a.end_ms
+      ? `<span class="tag">Đã kết thúc · ${esc(REASON[a.end_reason] || a.end_reason)}</span>`
+      : `<span class="tag bad">Đang ở yên</span>`;
+    return `
+    <article class="alert ${a.end_ms ? "ended" : ""}">
+      <div class="snap">
+        ${a.snapshot ? `<img src="${a.snapshot}" loading="lazy" data-zoom="${a.snapshot}" alt="Toàn khung ${esc(a.cam)}"><div class="box" style="${boxStyle}"></div>`
+                     : `<div class="noimg">Không có ảnh</div>`}
+      </div>
+      <div class="alert-body">
+        <div class="crop">${a.crop ? `<img src="${a.crop}" loading="lazy" data-zoom="${a.crop}" alt="Ảnh người #${a.tid}">` : ""}</div>
+        <div class="info">
+          <h3>${esc(a.cam)} · người #${esc(a.tid)} ${status}</h3>
+          <dl class="kv">
+            <dt>Bắt đầu ở yên</dt><dd>${fmtDate(a.start_ms)}</dd>
+            <dt>Cảnh báo lúc</dt><dd>${fmtTime(a.alert_ms)} <span class="tag bad">${a.dwell_s}s</span></dd>
+            <dt>Kết thúc</dt><dd>${a.end_ms ? `${fmtTime(a.end_ms)} · tổng ${a.total_s}s` : "–"}</dd>
+            <dt>Clip</dt><dd><span class="tag ${cls}">${txt}</span>${a.clip_s ? ` ${a.clip_s}s` : ""}</dd>
+          </dl>
+          <div class="actions">
+            <button class="btn primary" data-video="${a.clip_bbox || ""}" data-cap="${esc(a.cam)} #${a.tid} · có khung"${a.clip_bbox ? "" : " disabled"}>▶ Clip có khung</button>
+            <button class="btn" data-video="${a.clip || ""}" data-cap="${esc(a.cam)} #${a.tid} · clip gốc"${a.clip ? "" : " disabled"}>Clip gốc</button>
+          </div>
+        </div>
+      </div>
+    </article>`;
+  }).join("");
+  box.querySelectorAll("[data-video]").forEach(b => b.onclick = () =>
+    openModal(`<video src="${b.dataset.video}" controls autoplay></video>`, b.dataset.cap));
+  box.querySelectorAll("[data-zoom]").forEach(img => img.onclick = () =>
+    openModal(`<img src="${img.dataset.zoom}">`, img.alt));
+}
+
+async function loadAlerts() {
+  try { renderAlerts((await (await fetch("/api/alerts")).json()).alerts); } catch (e) {}
+}
+
+/* ---------- sự kiện ---------- */
+const EV_CLASS = { dwell_alert: "bad", dwell_end: "", clip_ready: "ok", clip_annotated: "ok", camera_online: "ok", camera_offline: "warn" };
+function evDetail(e) {
+  const d = e.data;
+  switch (e.type) {
+    case "dwell_alert": return `người #${d.tid} ở yên ${d.dwell_s}s từ ${fmtTime(d.start_ms)}`;
+    case "dwell_end": return `người #${d.tid} tổng ${d.dwell_s}s · ${REASON[d.reason] || d.reason}`;
+    case "clip_ready": return `${(d.file || "").split("/").pop()} (${((d.duration_ms || 0) / 1000).toFixed(1)}s)`;
+    case "clip_annotated": return (d.file || "").split("/").pop();
+    case "camera_online": return `có hình lại${d.silent_s ? ` sau ${d.silent_s}s` : ""} · ${d.uri}`;
+    case "camera_offline": return `không có hình ${d.silent_s}s · ${d.uri}`;
+    default: return JSON.stringify(d);
+  }
+}
+async function loadEvents() {
+  try {
+    const all = (await (await fetch("/api/events?limit=500")).json()).events;
+    const type = $("evType").value, list = type ? all.filter(e => e.type === type) : all;
+    $("evCount").textContent = `${list.length} sự kiện gần nhất`;
+    $("evBody").innerHTML = list.map(e => `<tr>
+      <td>${fmtDate(e.ts)}</td><td>${esc(e.cam)}</td>
+      <td><span class="tag ${EV_CLASS[e.type] || ""}">${esc(e.type)}</span></td>
+      <td class="detail">${esc(evDetail(e))}</td></tr>`).join("")
+      || `<tr><td colspan="4" class="detail">Chưa có sự kiện.</td></tr>`;
+  } catch (e) {}
+}
+$("evType").onchange = loadEvents;
+
+/* ---------- vòng lặp ---------- */
+loadState(); loadAlerts();
+setInterval(loadState, 1000);
+setInterval(() => { if (tab === "alerts" || tab === "cams") loadAlerts(); if (tab === "events") loadEvents(); }, 3000);
+window.addEventListener("resize", () => lastState && renderGrid(lastState));
+</script>
+</body>
+</html>

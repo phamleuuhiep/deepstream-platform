@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ds-frames.schema.json",
+  "title": "ds:frames - field data (JSON) của mỗi entry",
+  "description": "Metadata 1 frame của 1 cam sau detector + tracker. Entry có field cam, type=\"frame\", ts (epoch ms), data.",
+  "type": "object",
+  "required": [
+    "cam",
+    "frame",
+    "ts_ms",
+    "w",
+    "h",
+    "num_obj",
+    "objs",
+    "schema_version"
+  ],
+  "properties": {
+    "cam": {
+      "type": "string"
+    },
+    "frame": {
+      "type": "integer",
+      "description": "số thứ tự frame của cam, reset khi app/nguồn khởi động lại"
+    },
+    "ts_ms": {
+      "type": "integer",
+      "description": "epoch ms lúc frame vào pipeline (giờ server, cần đồng bộ NTP)"
+    },
+    "w": {
+      "const": 1920
+    },
+    "h": {
+      "const": 1080
+    },
+    "num_obj": {
+      "type": "integer"
+    },
+    "objs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cls",
+          "label",
+          "tid",
+          "conf",
+          "bbox"
+        ],
+        "properties": {
+          "cls": {
+            "type": "integer",
+            "description": "model hiện tại (TrafficCamNet): 0 car, 1 bicycle, 2 person, 3 roadsign"
+          },
+          "label": {
+            "type": "string"
+          },
+          "tid": {
+            "type": "integer",
+            "description": "tracking ID, -1 nếu chưa được track"
+          },
+          "conf": {
+            "type": "number",
+            "description": "độ tin cậy detector (0–1)"
+          },
+          "bbox": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 4,
+            "maxItems": 4
+          },
+          "attrs": {
+            "type": "array",
+            "description": "chỉ có khi bật SGIE classifier",
+            "items": {
+              "type": "object",
+              "properties": {
+                "gie": {
+                  "type": "integer"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "prob": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "gie": {
+            "type": "integer",
+            "description": "Chỉ có ở object do SGIE tạo (2 = mặt). Object của PGIE không có field này"
+          },
+          "ptid": {
+            "type": "integer",
+            "description": "Object SGIE: tracking ID người chứa nó"
+          },
+          "face": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "score": {
+                "type": "number"
+              }
+            }
+          },
+          "tier": {
+            "enum": [
+              "vip",
+              "normal"
+            ]
+          },
+          "tier_src": {
+            "enum": [
+              "face",
+              "classifier"
+            ]
+          },
+          "tier_prob": {
+            "type": "number"
+          },
+          "in_roi": {
+            "type": "boolean",
+            "description": "Chỉ có khi camera có vùng ghế: chân người có trong vùng không"
+          }
+        }
+      }
+    },
+    "schema_version": {
+      "const": 2
+    }
+  }
+}

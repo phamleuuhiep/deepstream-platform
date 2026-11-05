@@ -1,0 +1,26 @@
+# Chạy thử không cần GPU: Redis + replay dữ liệu mẫu + web demo
+#   docker compose up --build        ->  http://127.0.0.1:8095
+#   REPLAY_SPEED=4 docker compose up  tua nhanh 4 lần
+#   REDIS_PORT=6391 WEB_PORT=8096 docker compose up   khi cổng mặc định đã bị dùng
+# Redis được mở ở 127.0.0.1:6390 (giống môi trường dev bên DeepStream) để code platform nối vào.
+services:
+  redis:
+    image: redis:8.8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:${REDIS_PORT:-6390}:6379"]
+
+  replay:
+    build: ./demo_web
+    image: ds-platform-kit:1
+    command: ["python", "-u", "/replay/replay.py", "--redis", "redis:6379", "--data", "/data",
+              "--speed", "${REPLAY_SPEED:-1}"]
+    volumes: ["./replay:/replay:ro", "./sample_data:/data:ro"]
+    depends_on: [redis]
+    stop_grace_period: 5s
+
+  web:
+    image: ds-platform-kit:1
+    depends_on: [redis, replay]
+    environment: { REDIS: "redis:6379", HOST: "0.0.0.0", PORT: "8095", OUTPUTS: "/outputs" }
+    volumes: ["./demo_web:/app:ro", "./sample_data/outputs:/outputs:ro"]
+    ports: ["127.0.0.1:${WEB_PORT:-8095}:8095"]
